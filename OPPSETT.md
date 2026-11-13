@@ -55,6 +55,12 @@ Ingen hemmeligheter ligger i dette repoet. Vipps-nøkler og adminpassord ligger 
 | `MORKE_SIDER` | `1,4,11` (sider med mørk bunn, der vannmerket skal være lyst) |
 | `LENKE_DAGER` | `7` |
 | `MAKS_NEDLASTINGER` | `5` |
+| `PRIS` | valgfri, ordinær pris i kroner (standard `149`) |
+| `LANSERING_PRIS` | valgfri, lanseringspris i kroner (standard `99`) |
+| `LANSERING_START` | valgfri, når lanseringsprisen starter (standard `2026-11-26T00:00:00+01:00`) |
+| `LANSERING_SLUTT` | valgfri, første tidspunkt med ordinær pris (standard `2026-12-03T00:00:00+01:00`, altså til og med 2. desember) |
+
+Prisen bytter automatisk på datoene over: nettsiden spør backend om gjeldende pris, og Vipps-betalingen bruker den samme. Vil du endre pris eller datoer, endrer du bare disse egenskapene. Du trenger ikke publisere på nytt eller endre nettsiden.
 
 5. Velg funksjonen **`oppsett`** i menyen øverst og trykk **Kjør**. Godkjenn tilgangene Google ber om. Funksjonen lager regnearket og en utløser som sjekker ubetalte ordre hvert 5. minutt.
 6. Åpne funksjonen **`settAdminPassord`**, bytt ut `SKRIV-PASSORDET-HER` med et passord på minst 12 tegn, kjør den, og **slett passordet fra koden** etterpå.
