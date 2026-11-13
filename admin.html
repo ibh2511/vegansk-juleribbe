@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/side.css">
+<script src="assets/config.js"></script><script src="assets/api.js"></script>
+<title>Adminpanel</title>
+<style>
+main{max-width:1000px}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:20px 0}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
+.kpi b{display:block;font-family:"Playfair Display",serif;font-size:30px;color:var(--ink)}
+.kpi span{color:var(--muted);font-size:14px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px;overflow-x:auto}
+.panel h2{font-size:20px;margin-bottom:10px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-weight:600}
+.bars{display:flex;align-items:flex-end;gap:4px;height:160px;padding-top:8px}
+.bar{flex:1;min-width:6px;background:var(--line);border-radius:4px 4px 0 0;position:relative}
+.bar i{position:absolute;bottom:0;left:0;right:0;background:var(--red);border-radius:4px 4px 0 0}
+.legend{font-size:13px;color:var(--muted);margin-top:8px}
+.legend span{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 12px;vertical-align:middle}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.lenke{background:none;border:0;color:var(--red);cursor:pointer;font:inherit;text-decoration:underline}
+@media(min-width:720px){.kpis{grid-template-columns:repeat(5,1fr)}}
+</style>
+</head>
+<body>
+<div class="band" aria-hidden="true"></div>
+<main>
+  <form class="box" id="login" style="max-width:420px;margin:40px auto">
+    <h1>Adminpanel</h1>
+    <p>Logg inn for å se salg og besøk.</p>
+    <input type="password" id="pw" placeholder="Passord" autocomplete="current-password" required>
+    <br><button class="btn" type="submit">Logg inn</button>
+    <p id="feil" style="color:var(--red)"></p>
+  </form>
+  <div id="app" hidden>
+    <div class="top"><h1>Statistikk</h1><div><button class="lenke" id="oppdater">Oppdater</button> · <button class="lenke" id="ut">Logg ut</button></div></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="panel"><h2>Siste 30 dager</h2><div class="bars" id="bars"></div>
+      <div class="legend"><span style="background:var(--line)"></span>Besøk <span style="background:var(--red)"></span>Salg (skalert ×10)</div></div>
+    <div class="panel"><h2>Hvor besøkende kommer fra</h2><table id="kilder"></table></div>
+    <div class="panel"><h2>Hvilken knapp som selger</h2><table id="cta"></table></div>
+    <div class="panel"><h2>Siste ordre</h2><table id="ordre"></table></div>
+  </div>
+</main>
+<script>
+(function(){
+  var pw='';
+  try{ pw=sessionStorage.getItem('vj_admin')||''; }catch(e){}
+  var $=function(id){return document.getElementById(id);};
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function kr(n){return n.toLocaleString('nb-NO')+' kr';}
+  function pst(a,b){return b?(100*a/b).toFixed(1).replace('.',',')+' %':'–';}
+  function last(){
+    vjPost({action:'admin',passord:pw}).then(function(d){
+      if(!d.ok){ $('feil').textContent=d.error||'Feil'; $('login').hidden=false; $('app').hidden=true; return; }
+      try{ sessionStorage.setItem('vj_admin',pw); }catch(e){}
+      $('login').hidden=true; $('app').hidden=false; tegn(d);
+    }).catch(function(e){ $('feil').textContent='Fikk ikke kontakt med backend: '+e.message; });
+  }
+  function tegn(d){
+    var t=d.totalt;
+    $('kpis').innerHTML=[['Omsetning',kr(t.omsetning)],['Solgte hefter',t.salg],['Unike besøkende',t.unike],
+      ['Startet kjøp',t.kjopstart],['Konvertering',pst(t.salg,t.unike)]]
+      .map(function(k){return '<div class="kpi"><span>'+k[0]+'</span><b>'+k[1]+'</b></div>';}).join('');
+    var dager=d.dager.slice(-30), maks=Math.max.apply(null,dager.map(function(x){return Math.max(x.besok,x.salg*10);}).concat([1]));
+    $('bars').innerHTML=dager.map(function(x){
+      var h=Math.max(x.besok,x.salg*10);
+      return '<div class="bar" title="'+x.dag+': '+x.besok+' besøk, '+x.salg+' salg" style="height:'+(100*h/maks)+'%"><i style="height:'+(h?100*x.salg*10/h:0)+'%"></i></div>';
+    }).join('')||'<p>Ingen data ennå.</p>';
+    var k=Object.keys(d.kilder).sort(function(a,b){return d.kilder[b]-d.kilder[a];});
+    $('kilder').innerHTML='<tr><th>Kilde</th><th>Besøk</th></tr>'+k.map(function(x){return '<tr><td>'+esc(x)+'</td><td>'+d.kilder[x]+'</td></tr>';}).join('')+
+      '<tr><td><i>Mobil / PC</i></td><td>'+d.enheter.mobil+' / '+d.enheter.pc+'</td></tr>';
+    var c=Object.keys(d.ctaSalg);
+    $('cta').innerHTML='<tr><th>Knapp</th><th>Salg</th></tr>'+c.map(function(x){return '<tr><td>'+esc({hero:'Øverst',sticky:'Mobilknapp nederst',final:'Nederst på siden'}[x]||x)+'</td><td>'+d.ctaSalg[x]+'</td></tr>';}).join('');
+    $('ordre').innerHTML='<tr><th>Ordre</th><th>Tid</th><th>Status</th><th>Navn</th><th>E-post</th><th>Telefon</th><th>Nedl.</th><th>Kilde</th></tr>'+
+      d.siste.map(function(o){return '<tr><td>'+esc(o.ordre)+'</td><td>'+esc(new Date(o.tid).toLocaleString('nb-NO',{dateStyle:'short',timeStyle:'short'}))+'</td><td>'+esc(o.status)+'</td><td>'+esc(o.navn)+'</td><td>'+esc(o.epost)+'</td><td>'+esc(o.telefon)+'</td><td>'+esc(o.nedlastinger)+'</td><td>'+esc(o.kilde)+'</td></tr>';}).join('');
+  }
+  $('login').onsubmit=function(e){ e.preventDefault(); pw=$('pw').value; $('feil').textContent='Logger inn …'; last(); };
+  $('oppdater').onclick=last;
+  $('ut').onclick=function(){ try{sessionStorage.removeItem('vj_admin');}catch(e){} location.reload(); };
+  if(pw) last();
+})();
+</script>
+</body>
+</html>

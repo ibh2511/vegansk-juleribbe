@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vegansk juleribbe</title>
+<meta name="description" content="Oppskriftshefte på vegansk juleribbe med sprø, stekt svor. Last ned med en gang for 99 kr med Vipps.">
+<meta property="og:title" content="Vegansk juleribbe med sprø svor">
+<meta property="og:description" content="Hele oppskriften steg for steg, med bilder. 99 kr med Vipps.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --red:#9e1b22; --red-dark:#741218; --green:#1f3d2b; --cream:#f8f1e3; --paper:#fffaf0;
+  --gold:#c8a04a; --ink:#2a1d17; --muted:#6b5a4e; --vipps:#ff5b24; --line:#e6d8bf;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--cream);color:var(--ink);font:400 17px/1.6 "Source Sans 3",system-ui,sans-serif;padding-bottom:84px}
+h1,h2,h3{font-family:"Playfair Display",Georgia,serif;line-height:1.15;color:var(--red-dark)}
+img{max-width:100%;display:block}
+.wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+
+/* Strikkemønster-bord (lusekofte-inspirert) */
+.band{height:28px;background-color:var(--red);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Cg fill='%23f8f1e3'%3E%3Cpath d='M14 4 L22 14 L14 24 L6 14 Z' fill='none' stroke='%23f8f1e3' stroke-width='2' stroke-linejoin='round'/%3E%3Ccircle cx='14' cy='14' r='2.4'/%3E%3Ccircle cx='0' cy='14' r='1.6'/%3E%3Ccircle cx='28' cy='14' r='1.6'/%3E%3C/g%3E%3C/svg%3E");}
+.band.green{background-color:var(--green)}
+
+header.top{background:var(--red);color:var(--cream);text-align:center;font-weight:600;font-size:14px;padding:8px 16px;letter-spacing:.03em}
+
+.hero{padding:40px 0 48px}
+.hero .grid{display:grid;gap:32px;align-items:center}
+.eyebrow{display:inline-block;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:.12em;font-size:13px;margin-bottom:12px}
+.hero h1{font-size:clamp(34px,7vw,56px);font-weight:800}
+.hero h1 em{font-style:normal;color:var(--red)}
+.lead{font-size:19px;color:var(--muted);margin:16px 0 24px;max-width:34em}
+.price{display:flex;align-items:baseline;gap:12px;margin-bottom:16px}
+.price b{font-family:"Playfair Display",serif;font-size:40px;color:var(--ink)}
+.price span{color:var(--muted)}
+.btn-vipps{display:inline-flex;align-items:center;justify-content:center;gap:0;white-space:pre;background:var(--vipps);color:#fff;
+  font-weight:700;font-size:19px;padding:16px 28px;border-radius:12px;text-decoration:none;border:0;cursor:pointer;
+  box-shadow:0 6px 18px rgba(255,91,36,.35);min-height:56px;width:100%;max-width:420px;transition:transform .1s}
+.btn-vipps:active{transform:scale(.98)}
+.btn-vipps:focus-visible{outline:3px solid var(--green);outline-offset:3px}
+.trust{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:14px;font-size:14px;color:var(--muted)}
+.trust li{list-style:none}
+.samtykke{font-size:13px;color:var(--muted);margin-top:10px;max-width:420px}
+.samtykke a{color:var(--muted)}
+.trust li::before{content:"✓ ";color:var(--green);font-weight:700}
+
+.ph{background:repeating-linear-gradient(45deg,#efe3cc 0 12px,#f4ead6 12px 24px);border:2px dashed var(--gold);
+  border-radius:16px;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--muted);
+  font-size:14px;padding:16px;aspect-ratio:4/5}
+.ph.wide{aspect-ratio:16/10}
+.cover{position:relative}
+.cover .ph{box-shadow:0 20px 40px rgba(42,29,23,.18)}
+.badge{position:absolute;top:-14px;right:-6px;background:var(--gold);color:var(--ink);font-weight:700;border-radius:999px;
+  width:92px;height:92px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:14px;line-height:1.2;transform:rotate(10deg);box-shadow:0 6px 14px rgba(0,0,0,.15)}
+
+section{padding:56px 0}
+section h2{font-size:clamp(28px,5vw,40px);text-align:center;margin-bottom:12px}
+.sub{text-align:center;color:var(--muted);max-width:36em;margin:0 auto 32px}
+.paper{background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+
+.cards{display:grid;gap:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px}
+.card .ico{font-size:28px;margin-bottom:6px}
+.card h3{font-size:20px;margin-bottom:6px}
+.card p{color:var(--muted)}
+
+.inside{display:grid;gap:28px;align-items:center}
+.list{list-style:none}
+.list li{padding:12px 0 12px 36px;position:relative;border-bottom:1px solid var(--line)}
+.list li::before{content:"❄";position:absolute;left:4px;top:11px;color:var(--red);font-size:18px}
+
+.steps{display:grid;gap:16px;counter-reset:s}
+.step{background:#fff;border-radius:16px;padding:20px 20px 20px 72px;position:relative;border:1px solid var(--line)}
+.step::before{counter-increment:s;content:counter(s);position:absolute;left:20px;top:18px;width:38px;height:38px;border-radius:50%;
+  background:var(--green);color:var(--cream);display:flex;align-items:center;justify-content:center;font-weight:700}
+
+.quotes{display:grid;gap:16px}
+blockquote{background:#fff;border-left:4px solid var(--gold);border-radius:12px;padding:20px;font-style:italic}
+blockquote cite{display:block;margin-top:8px;font-style:normal;font-weight:600;color:var(--muted);font-size:15px}
+
+.about{display:grid;gap:24px;align-items:center}
+.about .ph{aspect-ratio:1;border-radius:50%;max-width:240px;margin:0 auto}
+
+details{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:10px}
+summary{cursor:pointer;padding:16px 20px;font-weight:600;list-style:none;position:relative;padding-right:44px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";position:absolute;right:20px;top:12px;font-size:22px;color:var(--red)}
+details[open] summary::after{content:"–"}
+details p{padding:0 20px 16px;color:var(--muted)}
+
+.final{background:var(--green);color:var(--cream);text-align:center}
+.final h2{color:var(--cream)}
+.final .sub{color:#d8e3d9}
+.final .price b{color:var(--cream)}
+.final .price span{color:#d8e3d9}
+.final .price{justify-content:center}
+
+footer{background:var(--ink);color:#cbbfb3;font-size:14px;padding:28px 0;text-align:center}
+footer a{color:var(--cream)}
+
+.sticky{position:fixed;left:0;right:0;bottom:0;background:rgba(255,250,240,.97);border-top:1px solid var(--line);
+  padding:12px 16px;display:flex;align-items:center;gap:12px;z-index:10;backdrop-filter:blur(6px);
+  transform:translateY(110%);transition:transform .25s}
+.sticky.show{transform:none}
+.sticky .p{font-weight:700;white-space:nowrap}
+.sticky .p small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.sticky .btn-vipps{font-size:17px;padding:12px 18px;min-height:48px;box-shadow:none}
+
+@media (min-width:760px){
+  body{padding-bottom:0}
+  .hero .grid{grid-template-columns:1.15fr .85fr}
+  .cards{grid-template-columns:repeat(3,1fr)}
+  .inside{grid-template-columns:1fr 1fr}
+  .steps{grid-template-columns:repeat(3,1fr)}
+  .quotes{grid-template-columns:repeat(3,1fr)}
+  .about{grid-template-columns:240px 1fr}
+  .sticky{display:none}
+}
+</style>
+<script src="assets/config.js"></script>
+<script src="assets/api.js"></script>
+</head>
+<body>
+
+<header class="top">🎄 Last ned med en gang. Klar til julaften.</header>
+<div class="band" aria-hidden="true"></div>
+
+<main>
+<section class="hero">
+  <div class="wrap grid">
+    <div>
+      <span class="eyebrow">Oppskriftshefte · PDF</span>
+      <h1>Vegansk juleribbe med <em>sprø, stekt svor</em></h1>
+      <p class="lead">Den saftige ribba med knasende svor som alle rundt bordet kan spise. Hjemmelaget seitan, forklart steg for steg med bilder, så den lykkes første gang.</p>
+      <div class="price"><b>99 kr</b><span>engangskjøp</span></div>
+      <button class="btn-vipps buy" type="button" data-cta="hero">Kjøp med <strong>Vipps</strong></button>
+      <ul class="trust">
+        <li>Sikker betaling med Vipps</li>
+        <li>Lastes ned på sekunder</li>
+        <li>Fungerer på mobil og nettbrett</li>
+      </ul>
+      <p class="samtykke">Ved kjøp samtykker du til at heftet leveres med en gang, og at angreretten dermed faller bort. <a href="vilkar.html">Vilkår</a></p>
+    </div>
+    <div class="cover">
+      <div class="ph">[ Bilde: ferdig ribbe på fat, svoren i fokus, julebord i bakgrunnen ]</div>
+      <div class="badge">100 %<br>plante&shy;basert</div>
+    </div>
+  </div>
+</section>
+
+<div class="band green" aria-hidden="true"></div>
+
+<section class="paper">
+  <div class="wrap">
+    <h2>Julesmaken, uten kompromiss</h2>
+    <p class="sub">Laget for deg som savner ribba, eller som vil at alle ved bordet skal få den samme festmiddagen.</p>
+    <div class="cards">
+      <div class="card"><div class="ico">🔥</div><h3>Ekte sprø svor</h3><p>Teknikken som gir svoren knaset og bobla du kjenner fra mormors ribbe.</p></div>
+      <div class="card"><div class="ico">🌿</div><h3>Saftig og mør</h3><p>Seitan med lag på lag, smaksatt med klassiske julekrydder.</p></div>
+      <div class="card"><div class="ico">📸</div><h3>Steg for steg</h3><p>Bilder av hvert trinn, så du ser hvordan det skal se ut underveis.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap inside">
+    <div class="ph wide">[ Bilde: oppslag fra heftet, gjerne vist på en mobil ]</div>
+    <div>
+      <h2 style="text-align:left">Dette får du i heftet</h2>
+      <ul class="list">
+        <li>Hovedoppskriften på juleribbe med stekt svor</li>
+        <li>Seitan på to måter: fra vanlig hvetemel eller fra glutenmel</li>
+        <li>Kokes, dampstekes i ovnen og stekes til sprø svor i panna</li>
+        <li>Fremdriftsplan, så alt er klart samtidig på julaften</li>
+        <li>Forslag til tilbehør og saus</li>
+        <li>Handleliste og tips om hvor du får tak i ingrediensene</li>
+        <li>Vanlige feil og hvordan du unngår dem</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="paper">
+  <div class="wrap">
+    <h2>Slik får du heftet</h2>
+    <p class="sub">Det tar under ett minutt.</p>
+    <div class="steps">
+      <div class="step"><h3>Betal med Vipps</h3><p>Trykk på knappen og godkjenn 99 kr i Vipps-appen.</p></div>
+      <div class="step"><h3>Få lenken</h3><p>Du får nedlastingslenken her på siden og på e-post.</p></div>
+      <div class="step"><h3>Lag julemiddagen</h3><p>Åpne PDF-en på mobilen eller skriv den ut.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Dette sier de som har smakt</h2>
+    <p class="sub">[ Erstattes med ekte sitater fra testsmakere. Ikke bruk oppdiktede omtaler. ]</p>
+    <div class="quotes">
+      <blockquote>«Sitat fra testsmaker»<cite>Navn, sted</cite></blockquote>
+      <blockquote>«Sitat fra testsmaker»<cite>Navn, sted</cite></blockquote>
+      <blockquote>«Sitat fra testsmaker»<cite>Navn, sted</cite></blockquote>
+    </div>
+  </div>
+</section>
+
+<section class="paper">
+  <div class="wrap about">
+    <div class="ph">[ Portrett av Celia Grimsgaard på kjøkkenet ]</div>
+    <div>
+      <h2 style="text-align:left">Hei, jeg er Celia</h2>
+      <p>[ Kort historie: hvorfor du begynte å utvikle en vegansk ribbe, hvor mange forsøk det tok, og hva som gjorde at svoren endelig ble sprø. 3–4 setninger med personlig preg selger best. ]</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap" style="max-width:720px">
+    <h2>Spørsmål og svar</h2>
+    <p class="sub">&nbsp;</p>
+    <details><summary>Hvordan får jeg heftet etter kjøp?</summary><p>Rett etter betaling får du en nedlastingslenke på siden og på e-post. Lenken virker i 7 dager.</p></details>
+    <details><summary>Er det vanskelig å lage seitan?</summary><p>Nei. Heftet viser hvert steg med bilder, og du trenger ikke spesielt utstyr.</p></details>
+    <details><summary>Hvor lang tid tar det?</summary><p>[ Fyll inn aktiv tid og total tid. ] Mye kan lages dagen før.</p></details>
+    <details><summary>Hvor får jeg tak i ingrediensene?</summary><p>Du kan lage seitan fra vanlig hvetemel, som finnes i alle butikker, eller bruke glutenmel for å spare tid. Heftet viser begge deler, og handlelisten står bakerst.</p></details>
+    <details><summary>Inneholder den allergener?</summary><p>Ja, seitan er laget av hvetegluten og passer ikke for deg med cøliaki eller glutenintoleranse.</p></details>
+    <details><summary>Hvorfor står navnet mitt nederst på sidene?</summary><p>Hvert hefte merkes med kjøperens navn og ordrenummer. Det beskytter arbeidet bak oppskriften mot ulovlig deling.</p></details>
+  </div>
+</section>
+
+<section class="final" id="kjop">
+  <div class="wrap">
+    <h2>Gjør årets julemiddag til en ny tradisjon</h2>
+    <p class="sub">Last ned heftet nå og ha god tid til å teste før julaften.</p>
+    <div class="price"><b>99 kr</b><span>med Vipps</span></div>
+    <button class="btn-vipps buy" type="button" data-cta="final">Kjøp med <strong>Vipps</strong></button>
+    <p style="margin-top:14px;font-size:14px;color:#d8e3d9">Ved kjøp godtar du <a href="vilkar.html" style="color:var(--cream)">salgsvilkårene</a> og samtykker til at heftet leveres med en gang, slik at angreretten faller bort.</p>
+  </div>
+</section>
+</main>
+
+<div class="band" aria-hidden="true"></div>
+<footer>
+  <div class="wrap">
+    <p>[ Foretaksnavn ] · Org.nr. 925 145 602 · [ e-post ]</p>
+    <p><a href="vilkar.html">Salgsvilkår</a> · <a href="personvern.html">Personvern</a> · <a href="https://instagram.com/cgrimsgaard">Instagram @cgrimsgaard</a></p>
+  </div>
+</footer>
+
+<div class="sticky" id="sticky">
+  <div class="p">99 kr<small>Vegansk juleribbe · PDF</small></div>
+  <button class="btn-vipps buy" type="button" data-cta="sticky">Kjøp med <strong>Vipps</strong></button>
+</div>
+
+<script>
+// Vis kjøpsknapp nederst på mobil når hovedknappen er scrollet ut av syne
+(function(){
+  var hero=document.querySelector('.hero .btn-vipps'), final=document.getElementById('kjop'), s=document.getElementById('sticky');
+  if(!('IntersectionObserver' in window)) return;
+  var heroOut=false, finalIn=false;
+  function upd(){ s.classList.toggle('show', heroOut && !finalIn); }
+  new IntersectionObserver(function(e){ heroOut=!e[0].isIntersecting; upd(); }).observe(hero);
+  new IntersectionObserver(function(e){ finalIn=e[0].isIntersecting; upd(); }).observe(final);
+})();
+
+// Kjøp: oppretter Vipps-betaling i backend og sender kunden videre til Vipps
+vjHit();
+document.querySelectorAll('button.buy').forEach(function(b){
+  var tekst=b.innerHTML;
+  b.addEventListener('click', function(){
+    if(!window.VJ_API){ b.textContent='Salget åpner snart'; return; }
+    b.disabled=true; b.textContent='Åpner Vipps …';
+    var u=vjUtm();
+    vjGet({action:'create', cta:b.dataset.cta, utm_source:u.utm_source, utm_campaign:u.utm_campaign})
+      .then(function(d){ if(!d.ok||!d.redirectUrl) throw new Error(d.error); location.href=d.redirectUrl; })
+      .catch(function(){ b.disabled=false; b.innerHTML=tekst; alertBox(); });
+  });
+});
+function alertBox(){
+  var m=document.getElementById('kjopfeil'); if(m){ m.hidden=false; return; }
+  m=document.createElement('p'); m.id='kjopfeil'; m.setAttribute('role','alert');
+  m.style.cssText='position:fixed;left:16px;right:16px;bottom:96px;background:#2a1d17;color:#f8f1e3;padding:12px 16px;border-radius:10px;z-index:20;text-align:center';
+  m.textContent='Vi fikk ikke kontakt med Vipps. Prøv igjen om litt.';
+  document.body.appendChild(m); setTimeout(function(){ m.hidden=true; },5000);
+}
+</script>
+</body>
+</html>
