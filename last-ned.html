@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/side.css">
+<script src="assets/config.js"></script><script src="assets/api.js"></script>
+<title>Last ned heftet</title>
+</head>
+<body>
+<div class="band" aria-hidden="true"></div>
+<main>
+  <div class="box" id="boks">
+    <h1>Heftet ditt er klart</h1>
+    <p>Trykk på knappen for å laste ned PDF-en. Den er merket med navnet ditt og ordrenummeret.</p>
+    <button class="btn" id="last">Last ned heftet (PDF)</button>
+    <p id="info" style="font-size:14px"></p>
+  </div>
+  <div class="box" style="margin-top:20px" id="nylenke" hidden>
+    <h2 style="font-size:22px">Trenger du en ny lenke?</h2>
+    <p>Skriv e-posten du brukte i Vipps, så sender vi en ny lenke hvis vi finner kjøpet.</p>
+    <input type="email" id="epost" placeholder="din@epost.no" autocomplete="email">
+    <br><button class="btn" id="send">Send ny lenke</button>
+    <p id="sendt"></p>
+  </div>
+</main>
+<footer><a href="./">Tilbake til forsiden</a></footer>
+<script>
+(function(){
+  var t=new URLSearchParams(location.search).get('t')||'';
+  var knapp=document.getElementById('last'), info=document.getElementById('info'), ny=document.getElementById('nylenke');
+  if(!t){ document.getElementById('boks').hidden=true; ny.hidden=false; }
+  knapp.onclick=function(){
+    knapp.disabled=true; knapp.textContent='Lager heftet ditt …';
+    vjGet({action:'download',t:t}).then(function(d){
+      if(!d.ok){ info.textContent=d.melding||'Lenken virker ikke.'; knapp.textContent='Last ned heftet (PDF)'; ny.hidden=false; return; }
+      var bin=atob(d.pdf), arr=new Uint8Array(bin.length);
+      for(var i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+      var url=URL.createObjectURL(new Blob([arr],{type:'application/pdf'}));
+      var a=document.createElement('a'); a.href=url; a.download=d.filnavn; document.body.appendChild(a); a.click(); a.remove();
+      knapp.disabled=false; knapp.textContent='Last ned på nytt';
+      info.innerHTML='Lastet ned! Du kan laste ned '+d.igjen+' gang(er) til med denne lenken.<br>Finner du ikke filen? <a href="'+url+'" target="_blank">Åpne PDF-en her</a>.';
+    }).catch(function(){ knapp.disabled=false; knapp.textContent='Prøv igjen'; info.textContent='Noe gikk galt. Prøv igjen om litt.'; });
+  };
+  document.getElementById('send').onclick=function(){
+    var e=document.getElementById('epost').value.trim(); if(!e) return;
+    vjGet({action:'resend',epost:e}).finally(function(){
+      document.getElementById('sendt').textContent='Hvis e-posten finnes i ordrelisten, er en ny lenke på vei. Sjekk også søppelpost.';
+    });
+  };
+})();
+</script>
+</body>
+</html>

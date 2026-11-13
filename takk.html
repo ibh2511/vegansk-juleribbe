@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/side.css">
+<script src="assets/config.js"></script><script src="assets/api.js"></script>
+<title>Takk for kjøpet</title>
+</head>
+<body>
+<div class="band" aria-hidden="true"></div>
+<main>
+  <div class="box" id="boks">
+    <h1>Sjekker betalingen …</h1>
+    <div class="spinner"></div>
+    <p>Dette tar bare noen sekunder.</p>
+  </div>
+</main>
+<footer><a href="./">Tilbake til forsiden</a></footer>
+<script>
+(function(){
+  var boks=document.getElementById('boks');
+  var ordre=new URLSearchParams(location.search).get('ordre')||'';
+  var forsok=0;
+  function vis(html){ boks.innerHTML=html; }
+  function sjekk(){
+    vjGet({action:'status',ordre:ordre}).then(function(d){
+      if(!d.ok) throw new Error(d.error);
+      if(d.status==='BETALT'){
+        vis('<h1>Takk for kjøpet! 🎄</h1><p>Betalingen er godkjent. Ordrenummer <b>'+ordre+'</b>.</p>'+
+          (d.token?'<a class="btn" href="last-ned.html?t='+d.token+'">Last ned heftet</a>':'')+
+          '<p style="margin-top:18px">Vi har også sendt nedlastingslenken til <b>'+(d.epost||'e-posten din')+'</b>. Sjekk søppelpost hvis den ikke dukker opp.</p>');
+      } else if(d.status==='VENTER' && forsok++<20){
+        setTimeout(sjekk,2500);
+      } else if(d.status==='VENTER'){
+        vis('<h1>Betalingen er ikke fullført ennå</h1><p>Hvis du godkjente i Vipps, kommer e-posten med lenken i løpet av få minutter.</p><a class="btn" href="javascript:location.reload()">Sjekk igjen</a>');
+      } else {
+        vis('<h1>Betalingen ble avbrutt</h1><p>Ingen penger er trukket. Du kan prøve igjen når du vil.</p><a class="btn" href="./#kjop">Prøv igjen</a>');
+      }
+    }).catch(function(){
+      if(forsok++<5) return setTimeout(sjekk,3000);
+      vis('<h1>Noe gikk galt</h1><p>Vi fikk ikke sjekket betalingen. Har du betalt, får du e-posten innen kort tid. Ellers kan du skrive til <a href="mailto:'+VJ_KONTAKT+'">'+VJ_KONTAKT+'</a> og oppgi ordrenummer '+ordre+'.</p>');
+    });
+  }
+  sjekk();
+})();
+</script>
+</body>
+</html>
