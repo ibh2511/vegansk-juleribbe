@@ -23,11 +23,11 @@
 <script>
 (function(){
   var boks=document.getElementById('boks');
-  var ordre=new URLSearchParams(location.search).get('ordre')||'';
+  var q=new URLSearchParams(location.search), ordre=q.get('ordre')||'', k=q.get('k')||'';
   var forsok=0;
   function vis(html){ boks.innerHTML=html; }
   function sjekk(){
-    vjGet({action:'status',ordre:ordre}).then(function(d){
+    vjGet({action:'status',ordre:ordre,k:k}).then(function(d){
       if(!d.ok) throw new Error(d.error);
       if(d.status==='BETALT'){
         vis('<h1>Takk for kjøpet! 🎄</h1><p>Betalingen er godkjent. Ordrenummer <b>'+ordre+'</b>.</p>'+
