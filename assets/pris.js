@@ -23,7 +23,6 @@
     var fase = naa < C.start ? 'for' : naa < C.slutt ? 'lansering' : 'etter';
     var pris = fase === 'lansering' ? C.lansering : C.ordinaer;
     var sisteDag = dato(C.slutt - 1);                 // slutt er første dag med ordinær pris
-    var periode = dato(C.start) + ' til og med ' + sisteDag;
 
     document.documentElement.setAttribute('data-prisfase', fase);
     alle('[data-pris]', function (el) { el.textContent = pris + ' kr'; });
@@ -32,11 +31,9 @@
     alle('[data-chip-vanlig]', function (el) { el.hidden = fase === 'lansering'; });
     alle('[data-lansering-kort]', function (el) { el.textContent = fase === 'lansering' ? 'Lanseringspris' : 'Direkte nedlasting'; });
     alle('[data-lansering]', function (el) {
-      el.hidden = fase === 'etter';
-      if (fase === 'for') {
-        el.className = 'lansering';
-        el.innerHTML = '<b>Lanseringspris ' + C.lansering + ' kr</b> fra ' + periode + '.';
-      } else if (fase === 'lansering') {
+      // Før og etter lanseringsuka ser kjøpsboksen ut som vanlig: bare prisen, uten ekstra linje.
+      el.hidden = fase !== 'lansering';
+      if (fase === 'lansering') {
         var igjen = C.slutt - naa, dager = Math.ceil(igjen / 864e5), timer = Math.ceil(igjen / 36e5);
         el.className = 'lansering na';
         el.innerHTML = '<span><b>Lanseringspris</b> til og med ' + sisteDag + '</span>' +
