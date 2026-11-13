@@ -15,11 +15,17 @@
  */
 
 var PDF_LIB_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
-var PRIS_ORE = 9900;
+var PRIS_ORE = 14900;              // ordinær pris
+var LANSERING_PRIS_ORE = 9900;     // lanseringspris
+var LANSERING_SLUTT = new Date('2026-12-03T00:00:00+01:00'); // lanseringsprisen gjelder til og med 2. desember
+
+function prisOre_(tid) {
+  return (tid || new Date()) < LANSERING_SLUTT ? LANSERING_PRIS_ORE : PRIS_ORE;
+}
 var ORDRE_ARK = 'Ordrer';
 var BESOK_ARK = 'Besøk';
 var ORDRE_KOLONNER = ['ordre', 'opprettet', 'status', 'navn', 'epost', 'telefon', 'token',
-  'nedlastinger', 'utloper', 'kilde', 'betalt', 'epost_sendt', 'nokkel'];
+  'nedlastinger', 'utloper', 'kilde', 'betalt', 'epost_sendt', 'nokkel', 'belop'];
 
 /* ------------------------------------------------------------------ */
 /* Innstillinger                                                       */
@@ -46,6 +52,8 @@ function sheet_(name) {
     if (name === ORDRE_ARK) sh.appendRow(ORDRE_KOLONNER);
     if (name === BESOK_ARK) sh.appendRow(['tid', 'side', 'kilde', 'utm_source', 'utm_campaign', 'enhet', 'besokende']);
     sh.setFrozenRows(1);
+  } else if (name === ORDRE_ARK && sh.getLastColumn() < ORDRE_KOLONNER.length) {
+    sh.getRange(1, 1, 1, ORDRE_KOLONNER.length).setValues([ORDRE_KOLONNER]); // nye kolonner i eldre ark
   }
   return sh;
 }
@@ -147,13 +155,13 @@ function createPayment_(p) {
     var kilde = [p.cta, p.utm_source, p.utm_campaign].filter(String).join(' / ').slice(0, 120);
     row = {}; ORDRE_KOLONNER.forEach(function (k) { row[k] = ''; });
     row.ordre = ordre; row.opprettet = new Date(); row.status = 'OPPRETTET'; row.nedlastinger = 0; row.kilde = kilde;
-    row.nokkel = nyNokkel_();
+    row.nokkel = nyNokkel_(); row.belop = prisOre_(row.opprettet) / 100;
     sheet_(ORDRE_ARK).appendRow(ORDRE_KOLONNER.map(function (k) { return celle_(row[k]); }));
   } finally { lock.releaseLock(); }
 
   var site = cfg_('SITE_URL').replace(/\/$/, '');
   var res = vipps_('post', '/epayment/v1/payments', {
-    amount: { currency: 'NOK', value: PRIS_ORE },
+    amount: { currency: 'NOK', value: row.belop * 100 },
     paymentMethod: { type: 'WALLET' },
     reference: ordre,
     userFlow: 'WEB_REDIRECT',
@@ -190,7 +198,7 @@ function checkOrder_(ordre, nokkel, fraUtloser) {
 
     // Digitalt produkt som leveres med en gang, så beløpet trekkes nå.
     vipps_('post', '/epayment/v1/payments/' + encodeURIComponent(ordre) + '/capture',
-      { modificationAmount: { currency: 'NOK', value: PRIS_ORE } }, 'capture-' + ordre);
+      { modificationAmount: { currency: 'NOK', value: pay.amount.value } }, 'capture-' + ordre);
 
     var info = {};
     if (pay.profile && pay.profile.sub) {
@@ -209,7 +217,7 @@ function checkOrder_(ordre, nokkel, fraUtloser) {
     };
     updateOrder_(o.row, fields);
     try {
-      sendMail_(fields.epost, fields.navn, ordre, token);
+      sendMail_(fields.epost, fields.navn, ordre, token, pay.amount.value / 100);
       updateOrder_(o.row, { epost_sendt: new Date() });
     } catch (err) { console.error('E-post feilet for ' + ordre + ': ' + err); }
     return { ok: true, status: 'BETALT', epost: maskEmail_(fields.epost), token: token };
@@ -261,7 +269,7 @@ function resend_(epost) {
     var dager = Number(cfg_('LENKE_DAGER', '7'));
     var token = nyNokkel_(40);
     updateOrder_(o.row, { token: token, nedlastinger: 0, utloper: new Date(Date.now() + dager * 864e5) });
-    sendMail_(o.data.epost, o.data.navn, o.data.ordre, token);
+    sendMail_(o.data.epost, o.data.navn, o.data.ordre, token, o.data.belop);
   }
   return { ok: true };
 }
@@ -373,7 +381,7 @@ function pdfStr_(s) {
 /* E-post                                                              */
 /* ------------------------------------------------------------------ */
 
-function sendMail_(to, navn, ordre, token) {
+function sendMail_(to, navn, ordre, token, belop) {
   if (!to) return;
   var link = cfg_('SITE_URL').replace(/\/$/, '') + '/last-ned.html?t=' + token;
   var fornavn = String(navn || '').split(' ')[0] || 'du';
@@ -455,7 +463,9 @@ function adminStats_(passord) {
   });
   var tot = dager.reduce(function (a, d) { a.besok += d.besok; a.unike += d.unike; a.kjopstart += d.kjopstart; a.salg += d.salg; return a; },
     { besok: 0, unike: 0, kjopstart: 0, salg: 0 });
-  tot.omsetning = tot.salg * PRIS_ORE / 100;
+  tot.omsetning = ordre.reduce(function (sum, r) {
+    return sum + (r[2] === 'BETALT' ? (Number(r[13]) || LANSERING_PRIS_ORE / 100) : 0);
+  }, 0);
 
   cache.remove('admin_feil');
   return { ok: true, totalt: tot, dager: dager, kilder: kilder, enheter: enheter, ctaSalg: ctaSalg, siste: siste };
