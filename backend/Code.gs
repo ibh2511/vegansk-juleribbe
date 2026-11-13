@@ -404,7 +404,7 @@ function sendMail_(to, navn, ordre, token, belop) {
     '<p>Her er heftet ditt med oppskriften på vegansk juleribbe med sprø, stekt svor.</p>' +
     '<p style="text-align:center;margin:28px 0"><a href="' + link + '" style="background:#1f3d2b;color:#f8f1e3;padding:14px 26px;border-radius:10px;text-decoration:none;font-weight:bold">Last ned heftet</a></p>' +
     '<p style="font-size:14px;color:#6b5a4e">Lenken virker i ' + dager + ' dager. Heftet er merket med navnet ditt og ordrenummeret og er kun til eget bruk.</p>' +
-    '<p style="font-size:14px;color:#6b5a4e">Ordrenummer: <b>' + ordre + '</b> · Beløp: 99 kr (0 % mva)<br>' +
+    '<p style="font-size:14px;color:#6b5a4e">Ordrenummer: <b>' + ordre + '</b> · Beløp: ' + (Number(belop) || prisOre_() / 100) + ' kr (0 % mva)<br>' +
     'Du samtykket ved kjøpet til at heftet leveres med en gang, og bekreftet at angreretten dermed faller bort (angrerettloven § 22 bokstav n).</p>' +
     '<p>God jul og lykke til på kjøkkenet!<br>Celia</p></div></div>';
   GmailApp.sendEmail(to, 'Heftet ditt: Vegansk juleribbe (' + ordre + ')',
