@@ -2,8 +2,9 @@
 window.VJ_API = "";
 window.VJ_KONTAKT = "post@eksempel.no"; // e-post kundene kan skrive til
 
-// Ordinær pris er VJ_PRIS. Lanseringsprisen gjelder fra START til (men ikke med) SLUTT,
-// altså 26. november til og med 2. desember. Må stemme med backend/Code.gs.
+// Reserveverdier for prisen. Når VJ_API er satt, henter siden pris og datoer fra backend
+// (Script Properties PRIS, LANSERING_PRIS, LANSERING_START, LANSERING_SLUTT), og Vipps tar samme beløp.
+// Lanseringsprisen gjelder fra START til (men ikke med) SLUTT, altså 26. november til og med 2. desember.
 window.VJ_PRIS = 149;
 window.VJ_LANSERING_PRIS = 99;
 window.VJ_LANSERING_START = "2026-11-26T00:00:00+01:00";

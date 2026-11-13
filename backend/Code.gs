@@ -15,15 +15,39 @@
  */
 
 var PDF_LIB_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
+// Pris og lanseringsperiode. Standardverdiene under kan overstyres i Script Properties
+// (PRIS, LANSERING_PRIS, LANSERING_START, LANSERING_SLUTT) uten å endre koden.
+// Nettsiden henter prisen herfra (action=pris), så siden og Vipps viser alltid det samme.
 var PRIS_ORE = 14900;              // ordinær pris
 var LANSERING_PRIS_ORE = 9900;     // lanseringspris
-var LANSERING_START = new Date('2026-11-26T00:00:00+01:00'); // lanseringsprisen gjelder fra 26. november
-var LANSERING_SLUTT = new Date('2026-12-03T00:00:00+01:00'); // lanseringsprisen gjelder til og med 2. desember
+var LANSERING_START = '2026-11-26T00:00:00+01:00'; // lanseringsprisen gjelder fra 26. november ...
+var LANSERING_SLUTT = '2026-12-03T00:00:00+01:00'; // ... til og med 2. desember (slutt er første dag med ordinær pris)
 
-function prisOre_(tid) {
-  var t = tid || new Date();
-  return (t >= LANSERING_START && t < LANSERING_SLUTT) ? LANSERING_PRIS_ORE : PRIS_ORE;
+function prisOppsett_() {
+  var props = PropertiesService.getScriptProperties();
+  function les(k, std) { var v = props.getProperty(k); return v === null || v === '' ? std : v; }
+  return {
+    ordinaer: Number(les('PRIS', PRIS_ORE / 100)),
+    lansering: Number(les('LANSERING_PRIS', LANSERING_PRIS_ORE / 100)),
+    start: new Date(les('LANSERING_START', LANSERING_START)),
+    slutt: new Date(les('LANSERING_SLUTT', LANSERING_SLUTT))
+  };
 }
+
+function prisOre_(tid, oppsett) {
+  var o = oppsett || prisOppsett_();
+  var t = tid ? new Date(tid) : new Date();
+  return Math.round((t >= o.start && t < o.slutt ? o.lansering : o.ordinaer) * 100);
+}
+
+// Offentlig prisinfo til nettsiden: gjeldende pris, periode og serverens klokke
+function prisInfo_() {
+  var o = prisOppsett_(), naa = new Date();
+  var fase = naa < o.start ? 'for' : naa < o.slutt ? 'lansering' : 'etter';
+  return { ok: true, pris: prisOre_(naa, o) / 100, ordinaer: o.ordinaer, lansering: o.lansering,
+    start: o.start.toISOString(), slutt: o.slutt.toISOString(), naa: naa.toISOString(), fase: fase };
+}
+
 var ORDRE_ARK = 'Ordrer';
 var BESOK_ARK = 'Besøk';
 var ORDRE_KOLONNER = ['ordre', 'opprettet', 'status', 'navn', 'epost', 'telefon', 'token',
@@ -84,6 +108,7 @@ function route_(e, body) {
       case 'status':   return json_(checkOrder_(p.ordre, p.k));
       case 'download': return json_(download_(p.t));
       case 'hit':      begrens_('hit', 300); return json_(hit_(p));
+      case 'pris':     begrens_('pris', 300); return json_(prisInfo_());
       case 'admin':    return json_(adminLogin_(p.passord));
       case 'stats':    return json_(adminStats_(p.okt, p.dager));
       case 'logout':   return json_(adminLogout_(p.okt));
@@ -507,6 +532,7 @@ function adminStats_(okt, antallDager) {
   });
 
   var O = {}; ORDRE_KOLONNER.forEach(function (k, i) { O[k] = i; });
+  var po = prisOppsett_();
   var ordre = sheet_(ORDRE_ARK).getDataRange().getValues().slice(1);
   ordre.forEach(function (r) {
     if (!iPerioden(r[O.opprettet])) return;
@@ -517,7 +543,7 @@ function adminStats_(okt, antallDager) {
     var dr = dagRad(dag(r[O.opprettet]));
     kr.klikk[cta]++; dr.klikk++;
     if (r[O.status] === 'BETALT') {
-      var belop = Number(r[O.belop]) || prisOre_(new Date(r[O.opprettet])) / 100;
+      var belop = Number(r[O.belop]) || prisOre_(r[O.opprettet], po) / 100;
       kr.salg++; kr.omsetning += belop; dr.salg++; dr.omsetning += belop;
     }
   });
