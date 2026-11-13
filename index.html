@@ -31,6 +31,8 @@ header.top{background:var(--red);color:var(--cream);text-align:center;font-weigh
 .hero{padding:24px 0 48px}
 .hero .grid{display:grid;gap:28px;align-items:center}
 .eyebrow{display:inline-block;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:.12em;font-size:13px;margin-bottom:10px}
+.eyebrow-mobil{margin-bottom:-14px;text-align:center}
+.eyebrow-desktop{display:none}
 .hero h1{font-size:clamp(36px,8.5vw,60px);font-weight:800;letter-spacing:-.01em}
 .hero h1 span{display:block}
 .hero h1 em{font-style:normal;color:var(--red)}
@@ -121,6 +123,8 @@ footer a{color:var(--cream)}
   body{padding-bottom:0}
   .hero{padding:48px 0 56px}
   .hero .grid{grid-template-columns:1.05fr .95fr;align-items:stretch;gap:48px}
+  .eyebrow-mobil{display:none}
+  .eyebrow-desktop{display:inline-block}
   .hero .cover{order:2;margin-top:0;display:flex}
   .hero .cover .ph{aspect-ratio:auto;flex:1;min-height:520px}
   .seal{width:128px;height:128px;top:-26px;right:-22px}
@@ -143,6 +147,7 @@ footer a{color:var(--cream)}
 <main>
 <section class="hero">
   <div class="wrap grid">
+    <span class="eyebrow eyebrow-mobil">Vegansk juleribbe · Oppskriftshefte</span>
     <div class="cover">
       <div class="ph">[ Bilde: ferdig ribbe på fat, svoren i fokus, julebord i bakgrunnen ]</div>
       <div class="seal" role="img" aria-label="100 prosent plantebasert, vegansk jul">
@@ -173,7 +178,7 @@ footer a{color:var(--cream)}
       </div>
     </div>
     <div>
-      <span class="eyebrow">Vegansk juleribbe</span>
+      <span class="eyebrow eyebrow-desktop">Vegansk juleribbe</span>
       <h1><span>Sprø svor.</span><span>Saftig ribbe.</span><span><em>Null gris.</em></span></h1>
       <p class="lead">Juleribba hele bordet kan spise, med svor som faktisk knaser. Hjemmelaget seitan, forklart steg for steg med bilder.</p>
       <div class="buybox">
