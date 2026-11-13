@@ -17,10 +17,12 @@
 var PDF_LIB_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
 var PRIS_ORE = 14900;              // ordinær pris
 var LANSERING_PRIS_ORE = 9900;     // lanseringspris
+var LANSERING_START = new Date('2026-11-26T00:00:00+01:00'); // lanseringsprisen gjelder fra 26. november
 var LANSERING_SLUTT = new Date('2026-12-03T00:00:00+01:00'); // lanseringsprisen gjelder til og med 2. desember
 
 function prisOre_(tid) {
-  return (tid || new Date()) < LANSERING_SLUTT ? LANSERING_PRIS_ORE : PRIS_ORE;
+  var t = tid || new Date();
+  return (t >= LANSERING_START && t < LANSERING_SLUTT) ? LANSERING_PRIS_ORE : PRIS_ORE;
 }
 var ORDRE_ARK = 'Ordrer';
 var BESOK_ARK = 'Besøk';
@@ -515,7 +517,7 @@ function adminStats_(okt, antallDager) {
     var dr = dagRad(dag(r[O.opprettet]));
     kr.klikk[cta]++; dr.klikk++;
     if (r[O.status] === 'BETALT') {
-      var belop = Number(r[O.belop]) || LANSERING_PRIS_ORE / 100;
+      var belop = Number(r[O.belop]) || prisOre_(new Date(r[O.opprettet])) / 100;
       kr.salg++; kr.omsetning += belop; dr.salg++; dr.omsetning += belop;
     }
   });
