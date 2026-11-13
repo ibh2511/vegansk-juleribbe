@@ -104,3 +104,25 @@ Legg til `?utm_source=` og `?utm_campaign=` på lenkene du deler. Da ser du i ad
 - Gmail-kontoer kan sende 100 e-poster i døgnet fra Apps Script. Det holder for ca. 100 salg om dagen.
 - Apps Script tåler ca. 30 samtidige forespørsler. Det holder godt for et julehefte.
 - Adminpanelet er beskyttet av passordet i backend. Selve siden er offentlig, men den viser ingenting uten riktig passord.
+
+## Sikkerhet
+
+Dette er innebygd:
+
+- **Ingen hemmeligheter i repoet.** Vipps-nøkler og adminpassord ligger bare i Skriptegenskaper i Apps Script.
+- **Betalingen sjekkes alltid direkte hos Vipps**, aldri ut fra hva nettleseren sier. Det går ikke an å «late som» man har betalt.
+- **Hemmelig nøkkel per ordre.** Takkesiden må ha nøkkelen fra Vipps-returadressen for å vise nedlastingslenken, så ingen kan gjette seg til andres ordrenummer.
+- **Nedlastingslenker** er lange tilfeldige koder, går ut etter 7 dager og virker maks 5 ganger.
+- **Adminpassordet** lagres bare som en hash. Etter 10 feil forsøk stenges innloggingen i 15 minutter.
+- **Regnearket** er beskyttet mot formel-injeksjon fra tekst som kommer fra nettet.
+- **Bremse mot misbruk:** maks 30 nye kjøp og 300 sidevisninger per minutt.
+- **«Send ny lenke»** svarer likt uansett om e-posten finnes, så ingen kan sjekke hvem som har kjøpt.
+
+Dette må du gjøre selv:
+
+- Slå på **totrinnsbekreftelse** på Google-, GitHub- og Vipps-kontoen.
+- **Ikke del** regnearket, heftet i Disken eller Apps Script-prosjektet med noen.
+- Bruk et **langt, unikt adminpassord** (gjerne fra en passordbehandler), og logg ut av adminpanelet på delte maskiner.
+- Ser du mistenkelig aktivitet, bytter du Client Secret i Vipps-portalen og kjører `settAdminPassord` med nytt passord.
+
+Vannmerket er avskrekkende, men ikke kopisikkert: noen med PDF-verktøy kan fjerne linja. Ordrenummeret ligger også skjult i PDF-ens metadata, slik at du kan spore en delt kopi.

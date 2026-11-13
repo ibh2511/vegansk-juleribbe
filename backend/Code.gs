@@ -19,7 +19,7 @@ var PRIS_ORE = 9900;
 var ORDRE_ARK = 'Ordrer';
 var BESOK_ARK = 'Besøk';
 var ORDRE_KOLONNER = ['ordre', 'opprettet', 'status', 'navn', 'epost', 'telefon', 'token',
-  'nedlastinger', 'utloper', 'kilde', 'betalt', 'epost_sendt'];
+  'nedlastinger', 'utloper', 'kilde', 'betalt', 'epost_sendt', 'nokkel'];
 
 /* ------------------------------------------------------------------ */
 /* Innstillinger                                                       */
@@ -66,10 +66,10 @@ function route_(e, body) {
   var p = Object.assign({}, (e && e.parameter) || {}, body || {});
   try {
     switch (p.action) {
-      case 'create':   return json_(createPayment_(p));
-      case 'status':   return json_(checkOrder_(p.ordre));
+      case 'create':   begrens_('create', 30); return json_(createPayment_(p));
+      case 'status':   return json_(checkOrder_(p.ordre, p.k));
       case 'download': return json_(download_(p.t));
-      case 'hit':      return json_(hit_(p));
+      case 'hit':      begrens_('hit', 300); return json_(hit_(p));
       case 'admin':    return json_(adminStats_(p.passord));
       case 'resend':   return json_(resend_(p.epost));
       default:         return json_({ ok: true, info: 'Vegansk juleribbe API' });
@@ -141,13 +141,14 @@ function nextOrderNo_() {
 function createPayment_(p) {
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
-  var ordre;
+  var ordre, row;
   try {
     ordre = nextOrderNo_();
     var kilde = [p.cta, p.utm_source, p.utm_campaign].filter(String).join(' / ').slice(0, 120);
-    var row = {}; ORDRE_KOLONNER.forEach(function (k) { row[k] = ''; });
+    row = {}; ORDRE_KOLONNER.forEach(function (k) { row[k] = ''; });
     row.ordre = ordre; row.opprettet = new Date(); row.status = 'OPPRETTET'; row.nedlastinger = 0; row.kilde = kilde;
-    sheet_(ORDRE_ARK).appendRow(ORDRE_KOLONNER.map(function (k) { return row[k]; }));
+    row.nokkel = nyNokkel_();
+    sheet_(ORDRE_ARK).appendRow(ORDRE_KOLONNER.map(function (k) { return celle_(row[k]); }));
   } finally { lock.releaseLock(); }
 
   var site = cfg_('SITE_URL').replace(/\/$/, '');
@@ -156,7 +157,7 @@ function createPayment_(p) {
     paymentMethod: { type: 'WALLET' },
     reference: ordre,
     userFlow: 'WEB_REDIRECT',
-    returnUrl: site + '/takk.html?ordre=' + encodeURIComponent(ordre),
+    returnUrl: site + '/takk.html?ordre=' + encodeURIComponent(ordre) + '&k=' + row.nokkel,
     paymentDescription: 'Vegansk juleribbe – oppskriftshefte (PDF)',
     profile: { scope: 'name phoneNumber email' }
   }, 'create-' + ordre);
@@ -164,15 +165,21 @@ function createPayment_(p) {
   return { ok: true, ordre: ordre, redirectUrl: res.redirectUrl };
 }
 
-/** Kalles fra takkesiden og fra tidsstyrt utløser. Trygg å kalle mange ganger. */
-function checkOrder_(ordre) {
+/**
+ * Kalles fra takkesiden og fra tidsstyrt utløser. Trygg å kalle mange ganger.
+ * Takkesiden må sende med den hemmelige nøkkelen fra returadressen. Uten den kan ingen
+ * gjette seg til andres ordrenummer og få nedlastingslenken deres.
+ */
+function checkOrder_(ordre, nokkel, fraUtloser) {
   if (!/^VJ-\d{5,}$/.test(ordre || '')) throw new Error('Ugyldig ordrenummer');
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
     var o = findOrder_('ordre', ordre);
     if (!o) throw new Error('Fant ikke ordren');
-    if (o.data.status === 'BETALT') return { ok: true, status: 'BETALT', epost: maskEmail_(o.data.epost) };
+    var eier = !!fraUtloser || (!!nokkel && String(nokkel) === String(o.data.nokkel));
+    if (!eier) throw new Error('Fant ikke ordren');
+    if (o.data.status === 'BETALT') return { ok: true, status: 'BETALT', epost: maskEmail_(o.data.epost), token: o.data.token };
 
     var pay = vipps_('get', '/epayment/v1/payments/' + encodeURIComponent(ordre));
     if (pay.state === 'CREATED') return { ok: true, status: 'VENTER' };
@@ -189,7 +196,7 @@ function checkOrder_(ordre) {
     if (pay.profile && pay.profile.sub) {
       info = vipps_('get', '/vipps-userinfo-api/userinfo/' + encodeURIComponent(pay.profile.sub));
     }
-    var token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '').slice(0, 8);
+    var token = nyNokkel_(40);
     var dager = Number(cfg_('LENKE_DAGER', '7'));
     var fields = {
       status: 'BETALT',
@@ -216,7 +223,7 @@ function pollPending() {
   var grense = Date.now() - 2 * 36e5;
   for (var i = 1; i < vals.length; i++) {
     if (vals[i][2] === 'OPPRETTET' && new Date(vals[i][1]).getTime() > grense) {
-      try { checkOrder_(vals[i][0]); } catch (err) { console.error(err); }
+      try { checkOrder_(vals[i][0], null, true); } catch (err) { console.error(err); }
     }
   }
 }
@@ -252,7 +259,7 @@ function resend_(epost) {
   var o = findOrder_('epost', epost, true);
   if (o && o.data.status === 'BETALT') {
     var dager = Number(cfg_('LENKE_DAGER', '7'));
-    var token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '').slice(0, 8);
+    var token = nyNokkel_(40);
     updateOrder_(o.row, { token: token, nedlastinger: 0, utloper: new Date(Date.now() + dager * 864e5) });
     sendMail_(o.data.epost, o.data.navn, o.data.ordre, token);
   }
@@ -396,7 +403,7 @@ function hit_(p) {
   var ref = String(p.ref || '').replace(/^https?:\/\//, '').split('/')[0].slice(0, 60);
   // Anonym daglig besøks-ID uten informasjonskapsler: siden sender en tilfeldig ID per dag fra sessionStorage.
   sheet_(BESOK_ARK).appendRow([new Date(), side, ref, String(p.utm_source || '').slice(0, 40),
-    String(p.utm_campaign || '').slice(0, 40), p.mobil === '1' ? 'mobil' : 'pc', String(p.v || '').slice(0, 16)]);
+    String(p.utm_campaign || '').slice(0, 40), p.mobil === '1' ? 'mobil' : 'pc', String(p.v || '').slice(0, 16)].map(celle_));
   return { ok: true };
 }
 
@@ -478,8 +485,29 @@ function findOrder_(field, value, last) {
 function updateOrder_(row, fields) {
   var sh = sheet_(ORDRE_ARK);
   Object.keys(fields).forEach(function (k) {
-    sh.getRange(row, ORDRE_KOLONNER.indexOf(k) + 1).setValue(fields[k]);
+    sh.getRange(row, ORDRE_KOLONNER.indexOf(k) + 1).setValue(celle_(fields[k]));
   });
+}
+
+/** Hindrer at tekst fra nettet (f.eks. «=IMPORTDATA(...)») blir tolket som formel i regnearket. */
+function celle_(v) {
+  return (typeof v === 'string' && /^[=+\-@\t\r]/.test(v)) ? "'" + v : v;
+}
+
+/** Tilfeldig hemmelig nøkkel med heksadesimale tegn. */
+function nyNokkel_(len) {
+  var s = '';
+  while (s.length < (len || 32)) s += Utilities.getUuid().replace(/-/g, '');
+  return s.slice(0, len || 32);
+}
+
+/** Enkel bremse mot misbruk: maks antall kall per minutt for hele løsningen. */
+function begrens_(navn, maksPerMinutt) {
+  var cache = CacheService.getScriptCache();
+  var key = 'rate_' + navn + '_' + Math.floor(Date.now() / 60000);
+  var n = Number(cache.get(key) || 0) + 1;
+  cache.put(key, String(n), 120);
+  if (n > maksPerMinutt) throw new Error('Mange forespørsler akkurat nå. Prøv igjen om et minutt.');
 }
 
 function maskEmail_(e) {
