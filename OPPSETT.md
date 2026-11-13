@@ -52,7 +52,7 @@ Ingen hemmeligheter ligger i dette repoet. Vipps-nøkler og adminpassord ligger 
 | `SITE_URL` | `https://ibh2511.github.io/vegansk-juleribbe` |
 | `AVSENDER_NAVN` | `Vegansk juleribbe` |
 | `SVAR_EPOST` | e-posten kundene kan svare til |
-| `MORKE_SIDER` | `1,4,11` (sider med mørk bunn, der vannmerket skal være lyst) |
+| `MORKE_SIDER` | `1,4,12` (sider med mørk bunn, der vannmerket skal være lyst) |
 | `LENKE_DAGER` | `7` |
 | `MAKS_NEDLASTINGER` | `5` |
 | `PRIS` | valgfri, ordinær pris i kroner (standard `149`) |
