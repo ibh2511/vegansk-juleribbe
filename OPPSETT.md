@@ -30,7 +30,7 @@ Ingen hemmeligheter ligger i dette repoet. Vipps-nøkler og adminpassord ligger 
 
 ## 3. Last opp heftet
 
-1. Lag den endelige PDF-en med **tomt vannmerkefelt** nederst.
+1. Bruk **`hefte-master.pdf`** (tomt vannmerkefelt nederst). Ikke bruk `hefte-mal.pdf`, som er forhåndsvisningen med eksempelnavnet «Kari Nordmann».
 2. Last den opp til Google Disk i den nye kontoen. Ikke del filen med noen.
 3. Åpne filen. ID-en er delen av adressen mellom `/d/` og `/view`. Den trenger du i steg 4.
 
