@@ -440,7 +440,7 @@ footer a{color:var(--cream)}
 // Tåler at assets/api.js mangler (f.eks. når siden forhåndsvises alene)
 if (typeof window.vjHit !== 'function') {
   window.vjHit = function(){};
-  window.vjUtm = function(){ return {utm_source:'', utm_campaign:''}; };
+  window.vjUtm = function(){ return {utm_source:'', utm_campaign:'', fra:'', ref:''}; };
 }
 vjHit();
 document.querySelectorAll('button.buy').forEach(function(b){
@@ -449,7 +449,7 @@ document.querySelectorAll('button.buy').forEach(function(b){
     if(!window.VJ_API){ b.textContent='Salget åpner snart'; return; }
     b.disabled=true; b.textContent='Åpner Vipps …';
     var u=vjUtm();
-    vjGet({action:'create', cta:b.dataset.cta, utm_source:u.utm_source, utm_campaign:u.utm_campaign})
+    vjGet({action:'create', cta:b.dataset.cta, utm_source:u.utm_source, utm_campaign:u.utm_campaign, fra:u.fra, ref:u.ref})
       .then(function(d){ if(!d.ok||!d.redirectUrl) throw new Error(d.error); location.href=d.redirectUrl; })
       .catch(function(){ b.disabled=false; b.innerHTML=tekst; alertBox(); });
   });

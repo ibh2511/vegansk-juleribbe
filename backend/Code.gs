@@ -25,7 +25,9 @@ function prisOre_(tid) {
 var ORDRE_ARK = 'Ordrer';
 var BESOK_ARK = 'Besøk';
 var ORDRE_KOLONNER = ['ordre', 'opprettet', 'status', 'navn', 'epost', 'telefon', 'token',
-  'nedlastinger', 'utloper', 'kilde', 'betalt', 'epost_sendt', 'nokkel', 'belop'];
+  'nedlastinger', 'utloper', 'kilde', 'betalt', 'epost_sendt', 'nokkel', 'belop', 'cta', 'partner'];
+var BESOK_KOLONNER = ['tid', 'side', 'kilde', 'utm_source', 'utm_campaign', 'enhet', 'besokende', 'partner'];
+var CTA_NAVN = ['hero', 'sticky', 'final'];
 
 /* ------------------------------------------------------------------ */
 /* Innstillinger                                                       */
@@ -50,10 +52,12 @@ function sheet_(name) {
   if (!sh) {
     sh = ss.insertSheet(name);
     if (name === ORDRE_ARK) sh.appendRow(ORDRE_KOLONNER);
-    if (name === BESOK_ARK) sh.appendRow(['tid', 'side', 'kilde', 'utm_source', 'utm_campaign', 'enhet', 'besokende']);
+    if (name === BESOK_ARK) sh.appendRow(BESOK_KOLONNER);
     sh.setFrozenRows(1);
   } else if (name === ORDRE_ARK && sh.getLastColumn() < ORDRE_KOLONNER.length) {
     sh.getRange(1, 1, 1, ORDRE_KOLONNER.length).setValues([ORDRE_KOLONNER]); // nye kolonner i eldre ark
+  } else if (name === BESOK_ARK && sh.getLastColumn() < BESOK_KOLONNER.length) {
+    sh.getRange(1, 1, 1, BESOK_KOLONNER.length).setValues([BESOK_KOLONNER]);
   }
   return sh;
 }
@@ -78,7 +82,9 @@ function route_(e, body) {
       case 'status':   return json_(checkOrder_(p.ordre, p.k));
       case 'download': return json_(download_(p.t));
       case 'hit':      begrens_('hit', 300); return json_(hit_(p));
-      case 'admin':    return json_(adminStats_(p.passord));
+      case 'admin':    return json_(adminLogin_(p.passord));
+      case 'stats':    return json_(adminStats_(p.okt, p.dager));
+      case 'logout':   return json_(adminLogout_(p.okt));
       case 'resend':   return json_(resend_(p.epost));
       default:         return json_({ ok: true, info: 'Vegansk juleribbe API' });
     }
@@ -152,10 +158,14 @@ function createPayment_(p) {
   var ordre, row;
   try {
     ordre = nextOrderNo_();
-    var kilde = [p.cta, p.utm_source, p.utm_campaign].filter(String).join(' / ').slice(0, 120);
+    var refDomene = String(p.ref || '').replace(/^https?:\/\//, '').split('/')[0];
+    // Fast rekkefølge: knapp / utm_source / utm_campaign / nettside kunden kom fra
+    var kilde = [p.cta, p.utm_source, p.utm_campaign, refDomene].map(function (x) { return String(x || '').slice(0, 40); }).join(' / ');
     row = {}; ORDRE_KOLONNER.forEach(function (k) { row[k] = ''; });
     row.ordre = ordre; row.opprettet = new Date(); row.status = 'OPPRETTET'; row.nedlastinger = 0; row.kilde = kilde;
     row.nokkel = nyNokkel_(); row.belop = prisOre_(row.opprettet) / 100;
+    row.cta = CTA_NAVN.indexOf(p.cta) >= 0 ? p.cta : 'annet';
+    row.partner = partnerNavn_(p.fra);
     sheet_(ORDRE_ARK).appendRow(ORDRE_KOLONNER.map(function (k) { return celle_(row[k]); }));
   } finally { lock.releaseLock(); }
 
@@ -394,7 +404,7 @@ function sendMail_(to, navn, ordre, token, belop) {
     '<p>Her er heftet ditt med oppskriften på vegansk juleribbe med sprø, stekt svor.</p>' +
     '<p style="text-align:center;margin:28px 0"><a href="' + link + '" style="background:#1f3d2b;color:#f8f1e3;padding:14px 26px;border-radius:10px;text-decoration:none;font-weight:bold">Last ned heftet</a></p>' +
     '<p style="font-size:14px;color:#6b5a4e">Lenken virker i ' + dager + ' dager. Heftet er merket med navnet ditt og ordrenummeret og er kun til eget bruk.</p>' +
-    '<p style="font-size:14px;color:#6b5a4e">Ordrenummer: <b>' + ordre + '</b> · Beløp: 99 kr (0 % mva)<br>' +
+    '<p style="font-size:14px;color:#6b5a4e">Ordrenummer: <b>' + ordre + '</b> · Beløp: ' + (Number(belop) || prisOre_() / 100) + ' kr (0 % mva)<br>' +
     'Du samtykket ved kjøpet til at heftet leveres med en gang, og bekreftet at angreretten dermed faller bort (angrerettloven § 22 bokstav n).</p>' +
     '<p>God jul og lykke til på kjøkkenet!<br>Celia</p></div></div>';
   GmailApp.sendEmail(to, 'Heftet ditt: Vegansk juleribbe (' + ordre + ')',
@@ -411,64 +421,127 @@ function hit_(p) {
   var ref = String(p.ref || '').replace(/^https?:\/\//, '').split('/')[0].slice(0, 60);
   // Anonym daglig besøks-ID uten informasjonskapsler: siden sender en tilfeldig ID per dag fra sessionStorage.
   sheet_(BESOK_ARK).appendRow([new Date(), side, ref, String(p.utm_source || '').slice(0, 40),
-    String(p.utm_campaign || '').slice(0, 40), p.mobil === '1' ? 'mobil' : 'pc', String(p.v || '').slice(0, 16)].map(celle_));
+    String(p.utm_campaign || '').slice(0, 40), p.mobil === '1' ? 'mobil' : 'pc', String(p.v || '').slice(0, 16),
+    partnerNavn_(p.fra)].map(celle_));
   return { ok: true };
 }
 
-function adminStats_(passord) {
+/** Samarbeidsnavn fra lenka (?fra=navn): små bokstaver, tall, - og _. */
+function partnerNavn_(v) {
+  return String(v || '').toLowerCase().replace(/æ/g, 'ae').replace(/ø/g, 'o').replace(/å/g, 'a')
+    .replace(/[^a-z0-9_-]/g, '').slice(0, 40);
+}
+
+/* ---- Innlogging til adminpanelet ---- */
+
+function hashPassord_(passord, salt) {
+  var h = String(salt || '') + String(passord || '');
+  var n = salt ? 2000 : 1; // med salt: 2000 runder gjør det tregt å gjette seg fram om hashen lekker
+  var bytes;
+  for (var i = 0; i < n; i++) {
+    bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, h, Utilities.Charset.UTF_8);
+    h = Utilities.base64Encode(bytes);
+  }
+  return h;
+}
+
+function adminLogin_(passord) {
   var cache = CacheService.getScriptCache();
   var forsok = Number(cache.get('admin_feil') || 0);
   if (forsok >= 10) throw new Error('For mange forsøk. Vent 15 minutter.');
-  var hash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(passord || ''), Utilities.Charset.UTF_8));
-  if (hash !== cfg_('ADMIN_PASSORD_HASH')) {
+  if (hashPassord_(passord, cfg_('ADMIN_SALT', '')) !== cfg_('ADMIN_PASSORD_HASH')) {
     cache.put('admin_feil', String(forsok + 1), 900);
     Utilities.sleep(800);
     return { ok: false, error: 'Feil passord' };
   }
+  cache.remove('admin_feil');
+  var okt = nyNokkel_(48);
+  cache.put('admin_okt_' + okt, '1', 2 * 3600); // innloggingen varer i 2 timer
+  return { ok: true, okt: okt };
+}
+
+function adminLogout_(okt) {
+  if (okt) CacheService.getScriptCache().remove('admin_okt_' + okt);
+  return { ok: true };
+}
+
+function sjekkOkt_(okt) {
+  if (!/^[a-f0-9]{48}$/.test(okt || '') || !CacheService.getScriptCache().get('admin_okt_' + okt)) {
+    var e = new Error('Logg inn på nytt'); e.utlogget = true; throw e;
+  }
+}
+
+/* ---- Statistikk ---- */
+
+function adminStats_(okt, antallDager) {
+  try { sjekkOkt_(okt); } catch (e) { return { ok: false, error: e.message, utlogget: true }; }
 
   var tz = Session.getScriptTimeZone();
   var dag = function (d) { return Utilities.formatDate(new Date(d), tz, 'yyyy-MM-dd'); };
-  var perDag = {};
-  var ensure = function (k) { return perDag[k] = perDag[k] || { besok: 0, unike: {}, kjopstart: 0, salg: 0 }; };
+  var n = Number(antallDager) || 0;
+  var fra = n ? dag(new Date(Date.now() - (n - 1) * 864e5)) : '0000';
+  var iPerioden = function (d) { return dag(d) >= fra; };
 
-  var kilder = {}, enheter = { mobil: 0, pc: 0 };
-  var besok = sheet_(BESOK_ARK).getDataRange().getValues().slice(1);
-  besok.forEach(function (r) {
-    if (r[1] !== '/' && r[1] !== '/index.html') return;
-    var d = ensure(dag(r[0]));
-    d.besok++; if (r[6]) d.unike[r[6]] = 1;
-    var k = r[3] || r[2] || 'direkte';
-    kilder[k] = (kilder[k] || 0) + 1;
-    enheter[r[5] === 'mobil' ? 'mobil' : 'pc']++;
+  var perDag = {}, kilder = {}, enheter = { mobil: 0, pc: 0 };
+  var dagRad = function (k) { return perDag[k] = perDag[k] || { besok: 0, unike: {}, klikk: 0, salg: 0, omsetning: 0 }; };
+  var kildeRad = function (navn, type) {
+    var key = type + ':' + navn;
+    return kilder[key] = kilder[key] || { kilde: navn, type: type, besok: 0, unikeSett: {}, klikk: { hero: 0, sticky: 0, final: 0, annet: 0 }, salg: 0, omsetning: 0 };
+  };
+  var kildeFor = function (partner, utm, ref) {
+    if (partner) return kildeRad(partner, 'samarbeid');
+    if (utm) return kildeRad(String(utm).toLowerCase(), 'kampanje');
+    if (ref) return kildeRad(String(ref).replace(/^www\./, ''), 'nettside');
+    return kildeRad('direkte', 'direkte');
+  };
+
+  var B = {}; BESOK_KOLONNER.forEach(function (k, i) { B[k] = i; });
+  sheet_(BESOK_ARK).getDataRange().getValues().slice(1).forEach(function (r) {
+    if ((r[B.side] !== '/' && r[B.side] !== '/index.html') || !iPerioden(r[B.tid])) return;
+    var d = dag(r[B.tid]), v = r[B.besokende];
+    var dr = dagRad(d); dr.besok++; if (v) dr.unike[v] = 1;
+    var kr = kildeFor(r[B.partner], r[B.utm_source], r[B.kilde]); kr.besok++; if (v) kr.unikeSett[d + v] = 1;
+    enheter[r[B.enhet] === 'mobil' ? 'mobil' : 'pc']++;
   });
 
+  var O = {}; ORDRE_KOLONNER.forEach(function (k, i) { O[k] = i; });
   var ordre = sheet_(ORDRE_ARK).getDataRange().getValues().slice(1);
-  var siste = [], ctaSalg = {};
   ordre.forEach(function (r) {
-    var d = ensure(dag(r[1]));
-    d.kjopstart++;
-    if (r[2] === 'BETALT') {
-      d.salg++;
-      var cta = String(r[9] || '').split(' / ')[0] || 'ukjent';
-      ctaSalg[cta] = (ctaSalg[cta] || 0) + 1;
+    if (!iPerioden(r[O.opprettet])) return;
+    var gammelKilde = String(r[O.kilde] || '').split(' / '); // ordre fra før cta/partner fikk egne kolonner
+    var cta = r[O.cta] || gammelKilde[0] || 'annet';
+    if (CTA_NAVN.indexOf(cta) < 0) cta = 'annet';
+    var kr = kildeFor(r[O.partner], gammelKilde[1], gammelKilde[3]);
+    var dr = dagRad(dag(r[O.opprettet]));
+    kr.klikk[cta]++; dr.klikk++;
+    if (r[O.status] === 'BETALT') {
+      var belop = Number(r[O.belop]) || LANSERING_PRIS_ORE / 100;
+      kr.salg++; kr.omsetning += belop; dr.salg++; dr.omsetning += belop;
     }
   });
-  ordre.slice(-25).reverse().forEach(function (r) {
-    siste.push({ ordre: r[0], tid: r[1], status: r[2], navn: r[3], epost: r[4], telefon: r[5], nedlastinger: r[7], kilde: r[9] });
-  });
 
+  var liste = Object.keys(kilder).map(function (k) {
+    var x = kilder[k];
+    x.unike = Object.keys(x.unikeSett).length; delete x.unikeSett;
+    x.klikkTotalt = x.klikk.hero + x.klikk.sticky + x.klikk.final + x.klikk.annet;
+    return x;
+  });
   var dager = Object.keys(perDag).sort().map(function (k) {
     var d = perDag[k];
-    return { dag: k, besok: d.besok, unike: Object.keys(d.unike).length, kjopstart: d.kjopstart, salg: d.salg };
+    return { dag: k, besok: d.besok, unike: Object.keys(d.unike).length, klikk: d.klikk, salg: d.salg, omsetning: d.omsetning };
   });
-  var tot = dager.reduce(function (a, d) { a.besok += d.besok; a.unike += d.unike; a.kjopstart += d.kjopstart; a.salg += d.salg; return a; },
-    { besok: 0, unike: 0, kjopstart: 0, salg: 0 });
-  tot.omsetning = ordre.reduce(function (sum, r) {
-    return sum + (r[2] === 'BETALT' ? (Number(r[13]) || LANSERING_PRIS_ORE / 100) : 0);
-  }, 0);
+  var tot = dager.reduce(function (a, d) {
+    a.besok += d.besok; a.unike += d.unike; a.klikk += d.klikk; a.salg += d.salg; a.omsetning += d.omsetning; return a;
+  }, { besok: 0, unike: 0, klikk: 0, salg: 0, omsetning: 0 });
+  var knapper = { hero: 0, sticky: 0, final: 0, annet: 0 };
+  liste.forEach(function (x) { Object.keys(knapper).forEach(function (c) { knapper[c] += x.klikk[c]; }); });
 
-  cache.remove('admin_feil');
-  return { ok: true, totalt: tot, dager: dager, kilder: kilder, enheter: enheter, ctaSalg: ctaSalg, siste: siste };
+  var siste = ordre.slice(-25).reverse().map(function (r) {
+    return { ordre: r[O.ordre], tid: r[O.opprettet], status: r[O.status], navn: r[O.navn], epost: r[O.epost], telefon: r[O.telefon],
+      nedlastinger: r[O.nedlastinger], belop: r[O.belop], cta: r[O.cta] || String(r[O.kilde] || '').split(' / ')[0], partner: r[O.partner] };
+  });
+
+  return { ok: true, periode: n, totalt: tot, dager: dager, kilder: liste, knapper: knapper, enheter: enheter, siste: siste };
 }
 
 /* ------------------------------------------------------------------ */
@@ -558,9 +631,11 @@ function oppsett() {
 /** 2) Sett adminpassord: skriv passordet inn her, kjør funksjonen, og slett passordet fra koden etterpå. */
 function settAdminPassord() {
   var passord = 'SKRIV-PASSORDET-HER';
-  if (passord === 'SKRIV-PASSORDET-HER' || passord.length < 10) throw new Error('Velg et passord på minst 10 tegn');
-  var hash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, passord, Utilities.Charset.UTF_8));
-  PropertiesService.getScriptProperties().setProperty('ADMIN_PASSORD_HASH', hash);
+  if (passord === 'SKRIV-PASSORDET-HER' || passord.length < 12) throw new Error('Velg et passord på minst 12 tegn');
+  var salt = nyNokkel_(32);
+  var props = PropertiesService.getScriptProperties();
+  props.setProperty('ADMIN_SALT', salt);
+  props.setProperty('ADMIN_PASSORD_HASH', hashPassord_(passord, salt));
   console.log('Passord lagret. Husk å fjerne det fra koden nå.');
 }
 

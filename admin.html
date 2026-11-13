@@ -3,94 +3,223 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://script.google.com https://script.googleusercontent.com; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta name="theme-color" content="#5e0f16">
-<meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/side.css">
 <script src="assets/config.js"></script><script src="assets/api.js"></script>
 <title>Adminpanel</title>
 <style>
-main{max-width:1000px}
-.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:20px 0}
-.kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
-.kpi b{display:block;font-family:"Playfair Display",serif;font-size:30px;color:var(--ink)}
-.kpi span{color:var(--muted);font-size:14px}
-.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px;overflow-x:auto}
-.panel h2{font-size:20px;margin-bottom:10px}
+main{max-width:1100px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.top h1{font-size:32px}
+.verktoy{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+select{font:inherit;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+.lenke{background:none;border:0;color:var(--red);cursor:pointer;font:inherit;text-decoration:underline;padding:4px}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:18px 0}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.kpi b{display:block;font-family:"Playfair Display",serif;font-size:28px;color:var(--ink);line-height:1.2}
+.kpi span{color:var(--muted);font-size:13.5px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.panel h2{font-size:20px;margin-bottom:4px}
+.panel .hint{color:var(--muted);font-size:14px;margin-bottom:12px}
+.tabell{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{border-collapse:collapse;width:100%;font-size:14px}
-th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
-th{color:var(--muted);font-weight:600}
-.bars{display:flex;align-items:flex-end;gap:4px;height:160px;padding-top:8px}
-.bar{flex:1;min-width:6px;background:var(--line);border-radius:4px 4px 0 0;position:relative}
-.bar i{position:absolute;bottom:0;left:0;right:0;background:var(--red);border-radius:4px 4px 0 0}
-.legend{font-size:13px;color:var(--muted);margin-top:8px}
-.legend span{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 12px;vertical-align:middle}
-.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-.lenke{background:none;border:0;color:var(--red);cursor:pointer;font:inherit;text-decoration:underline}
-@media(min-width:720px){.kpis{grid-template-columns:repeat(5,1fr)}}
+th,td{text-align:right;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600;font-size:13px}
+th button{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+th button:focus-visible{outline:2px solid var(--green);outline-offset:2px;border-radius:4px}
+th button[aria-sort] .pil{opacity:1}
+.pil{opacity:.25;font-size:11px}
+tbody tr:hover{background:#fbf7ee}
+.type{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;margin-left:6px;vertical-align:1px}
+.type.samarbeid{background:#fbeaea;color:var(--red-dark)}
+.type.kampanje{background:#f4ecd8;color:#7a5a12}
+.type.nettside{background:#e8eef5;color:#2c4a6b}
+.type.direkte{background:#eef3ee;color:var(--green)}
+.knapper{display:grid;gap:10px}
+.knapp-rad{display:grid;grid-template-columns:150px 1fr 60px;align-items:center;gap:10px;font-size:14px}
+.stolpe{height:12px;background:var(--line);border-radius:6px;overflow:hidden}
+.stolpe i{display:block;height:100%;background:var(--vipps);border-radius:6px}
+.lag{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.lag input{max-width:260px}
+.lag .btn{margin-top:0;font-size:16px;min-height:46px;padding:10px 18px}
+.resultat{margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.resultat code{background:#f7f1e4;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px;word-break:break-all}
+.venstre th,.venstre td{text-align:left}
+.tom{color:var(--muted);font-size:14px;padding:8px 0}
+@media(min-width:760px){.kpis{grid-template-columns:repeat(6,1fr)}}
 </style>
 </head>
 <body>
 <div class="band" aria-hidden="true"></div>
 <main>
-  <form class="box" id="login" style="max-width:420px;margin:40px auto">
+  <form class="box" id="login" style="max-width:420px;margin:40px auto" autocomplete="on">
     <h1>Adminpanel</h1>
-    <p>Logg inn for å se salg og besøk.</p>
+    <p>Logg inn for å se salg, besøk og samarbeid.</p>
     <input type="password" id="pw" placeholder="Passord" autocomplete="current-password" required>
     <br><button class="btn" type="submit">Logg inn</button>
-    <p id="feil" style="color:var(--red)"></p>
+    <p id="feil" role="alert" style="color:var(--red)"></p>
   </form>
+
   <div id="app" hidden>
-    <div class="top"><h1>Statistikk</h1><div><button class="lenke" id="oppdater">Oppdater</button> · <button class="lenke" id="ut">Logg ut</button></div></div>
+    <div class="top">
+      <h1>Statistikk</h1>
+      <div class="verktoy">
+        <label for="periode" class="hint" style="margin:0;color:var(--muted)">Periode</label>
+        <select id="periode">
+          <option value="1">I dag</option>
+          <option value="7">Siste 7 dager</option>
+          <option value="30">Siste 30 dager</option>
+          <option value="0" selected>Hele perioden</option>
+        </select>
+        <button class="lenke" id="oppdater">Oppdater</button>
+        <button class="lenke" id="ut">Logg ut</button>
+      </div>
+    </div>
+
     <div class="kpis" id="kpis"></div>
-    <div class="panel"><h2>Siste 30 dager</h2><div class="bars" id="bars"></div>
-      <div class="legend"><span style="background:var(--line)"></span>Besøk <span style="background:var(--red)"></span>Salg (skalert ×10)</div></div>
-    <div class="panel"><h2>Hvor besøkende kommer fra</h2><table id="kilder"></table></div>
-    <div class="panel"><h2>Hvilken knapp som selger</h2><table id="cta"></table></div>
-    <div class="panel"><h2>Siste ordre</h2><table id="ordre"></table></div>
+
+    <div class="panel">
+      <h2>Kilder og samarbeid</h2>
+      <p class="hint">Trykk på en kolonne for å sortere. Klikk er trykk på Vipps-knappene.</p>
+      <div class="tabell"><table id="kilder"></table></div>
+    </div>
+
+    <div class="panel">
+      <h2>Trykk på Vipps-knappene</h2>
+      <p class="hint">Hvor på siden folk trykker «Kjøp med Vipps».</p>
+      <div class="knapper" id="knapper"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Lag samarbeidslenke</h2>
+      <p class="hint">Gi hver samarbeidspartner sin egen lenke. Da ser du besøk, klikk og salg per partner i tabellen over.</p>
+      <div class="lag">
+        <input id="partner" placeholder="f.eks. gronnehverdag" maxlength="40" autocomplete="off">
+        <button class="btn" type="button" id="lagLenke">Lag lenke</button>
+      </div>
+      <div class="resultat" id="resultat" hidden><code id="nyLenke"></code><button class="lenke" id="kopier">Kopier</button></div>
+    </div>
+
+    <div class="panel">
+      <h2>Per dag</h2>
+      <p class="hint">Nyeste dag øverst.</p>
+      <div class="tabell"><table id="perdag"></table></div>
+    </div>
+
+    <div class="panel">
+      <h2>Siste ordre</h2>
+      <div class="tabell"><table id="ordre"></table></div>
+    </div>
   </div>
 </main>
 <script>
 (function(){
-  var pw='';
-  try{ pw=sessionStorage.getItem('vj_admin')||''; }catch(e){}
+  var okt='', data=null, sortering={nokkel:'salg', retning:-1};
+  try{ okt=sessionStorage.getItem('vj_admin_okt')||''; }catch(e){}
   var $=function(id){return document.getElementById(id);};
-  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
-  function kr(n){return n.toLocaleString('nb-NO')+' kr';}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function kr(n){return Math.round(n).toLocaleString('nb-NO')+' kr';}
   function pst(a,b){return b?(100*a/b).toFixed(1).replace('.',',')+' %':'–';}
-  function last(){
-    vjPost({action:'admin',passord:pw}).then(function(d){
-      if(!d.ok){ $('feil').textContent=d.error||'Feil'; $('login').hidden=false; $('app').hidden=true; return; }
-      try{ sessionStorage.setItem('vj_admin',pw); }catch(e){}
-      $('login').hidden=true; $('app').hidden=false; tegn(d);
+  var KNAPP={hero:'Øverst (hero)',sticky:'Mobil, nederst på skjermen',final:'Kjøpskortet nederst',annet:'Annet'};
+  var TYPE={samarbeid:'Samarbeid',kampanje:'Kampanje',nettside:'Nettside',direkte:'Direkte'};
+
+  function visLogin(melding){
+    try{ sessionStorage.removeItem('vj_admin_okt'); }catch(e){}
+    okt=''; $('app').hidden=true; $('login').hidden=false; $('feil').textContent=melding||'';
+  }
+  function hent(){
+    vjPost({action:'stats', okt:okt, dager:$('periode').value}).then(function(d){
+      if(!d.ok){ return visLogin(d.utlogget ? 'Du er logget ut. Logg inn på nytt.' : (d.error||'Noe gikk galt')); }
+      $('login').hidden=true; $('app').hidden=false; data=d; tegn();
     }).catch(function(e){ $('feil').textContent='Fikk ikke kontakt med backend: '+e.message; });
   }
-  function tegn(d){
-    var t=d.totalt;
-    $('kpis').innerHTML=[['Omsetning',kr(t.omsetning)],['Solgte hefter',t.salg],['Unike besøkende',t.unike],
-      ['Startet kjøp',t.kjopstart],['Konvertering',pst(t.salg,t.unike)]]
+  function tegn(){
+    var t=data.totalt;
+    $('kpis').innerHTML=[['Omsetning',kr(t.omsetning)],['Salg',t.salg],['Unike besøkende',t.unike],['Besøk',t.besok],
+      ['Klikk på Vipps',t.klikk],['Konvertering',pst(t.salg,t.unike)]]
       .map(function(k){return '<div class="kpi"><span>'+k[0]+'</span><b>'+k[1]+'</b></div>';}).join('');
-    var dager=d.dager.slice(-30), maks=Math.max.apply(null,dager.map(function(x){return Math.max(x.besok,x.salg*10);}).concat([1]));
-    $('bars').innerHTML=dager.map(function(x){
-      var h=Math.max(x.besok,x.salg*10);
-      return '<div class="bar" title="'+x.dag+': '+x.besok+' besøk, '+x.salg+' salg" style="height:'+(100*h/maks)+'%"><i style="height:'+(h?100*x.salg*10/h:0)+'%"></i></div>';
-    }).join('')||'<p>Ingen data ennå.</p>';
-    var k=Object.keys(d.kilder).sort(function(a,b){return d.kilder[b]-d.kilder[a];});
-    $('kilder').innerHTML='<tr><th>Kilde</th><th>Besøk</th></tr>'+k.map(function(x){return '<tr><td>'+esc(x)+'</td><td>'+d.kilder[x]+'</td></tr>';}).join('')+
-      '<tr><td><i>Mobil / PC</i></td><td>'+d.enheter.mobil+' / '+d.enheter.pc+'</td></tr>';
-    var c=Object.keys(d.ctaSalg);
-    $('cta').innerHTML='<tr><th>Knapp</th><th>Salg</th></tr>'+c.map(function(x){return '<tr><td>'+esc({hero:'Øverst',sticky:'Mobilknapp nederst',final:'Nederst på siden'}[x]||x)+'</td><td>'+d.ctaSalg[x]+'</td></tr>';}).join('');
-    $('ordre').innerHTML='<tr><th>Ordre</th><th>Tid</th><th>Status</th><th>Navn</th><th>E-post</th><th>Telefon</th><th>Nedl.</th><th>Kilde</th></tr>'+
-      d.siste.map(function(o){return '<tr><td>'+esc(o.ordre)+'</td><td>'+esc(new Date(o.tid).toLocaleString('nb-NO',{dateStyle:'short',timeStyle:'short'}))+'</td><td>'+esc(o.status)+'</td><td>'+esc(o.navn)+'</td><td>'+esc(o.epost)+'</td><td>'+esc(o.telefon)+'</td><td>'+esc(o.nedlastinger)+'</td><td>'+esc(o.kilde)+'</td></tr>';}).join('');
+    tegnKilder();
+    var kn=data.knapper, maks=Math.max(1,kn.hero,kn.sticky,kn.final,kn.annet), sum=kn.hero+kn.sticky+kn.final+kn.annet;
+    $('knapper').innerHTML=['hero','sticky','final'].concat(kn.annet?['annet']:[]).map(function(k){
+      return '<div class="knapp-rad"><span>'+KNAPP[k]+'</span><div class="stolpe"><i style="width:'+(100*kn[k]/maks)+'%"></i></div><b style="text-align:right">'+kn[k]+'</b></div>';
+    }).join('')+(sum?'':'<p class="tom">Ingen klikk i perioden ennå.</p>');
+    var dager=data.dager.slice().reverse();
+    $('perdag').innerHTML='<thead><tr><th>Dag</th><th>Unike</th><th>Besøk</th><th>Klikk på Vipps</th><th>Salg</th><th>Omsetning</th><th>Konvertering</th></tr></thead><tbody>'+
+      (dager.length?dager.map(function(x){
+        return '<tr><td>'+esc(new Date(x.dag+'T12:00:00').toLocaleDateString('nb-NO',{weekday:'short',day:'numeric',month:'short'}))+'</td><td>'+x.unike+'</td><td>'+x.besok+'</td><td>'+x.klikk+'</td><td>'+x.salg+'</td><td>'+kr(x.omsetning)+'</td><td>'+pst(x.salg,x.unike)+'</td></tr>';
+      }).join(''):'<tr><td colspan="7" class="tom">Ingen data i perioden.</td></tr>')+'</tbody>';
+    $('ordre').className='venstre'; $('ordre').innerHTML='<thead><tr><th>Ordre</th><th>Tid</th><th>Status</th><th>Beløp</th><th>Knapp</th><th>Samarbeid</th><th>Navn</th><th>E-post</th><th>Telefon</th><th>Nedl.</th></tr></thead><tbody>'+
+      data.siste.map(function(o){return '<tr><td>'+esc(o.ordre)+'</td><td>'+esc(new Date(o.tid).toLocaleString('nb-NO',{dateStyle:'short',timeStyle:'short'}))+'</td><td>'+esc(o.status)+'</td><td>'+esc(o.belop?o.belop+' kr':'')+'</td><td>'+esc(KNAPP[o.cta]?o.cta:'')+'</td><td>'+esc(o.partner)+'</td><td>'+esc(o.navn)+'</td><td>'+esc(o.epost)+'</td><td>'+esc(o.telefon)+'</td><td>'+esc(o.nedlastinger)+'</td></tr>';}).join('')+'</tbody>';
   }
-  $('login').onsubmit=function(e){ e.preventDefault(); pw=$('pw').value; $('feil').textContent='Logger inn …'; last(); };
-  $('oppdater').onclick=last;
-  $('ut').onclick=function(){ try{sessionStorage.removeItem('vj_admin');}catch(e){} location.reload(); };
-  if(pw) last();
+  var KOLONNER=[
+    ['kilde','Kilde',function(x){return esc(x.kilde)+'<span class="type '+x.type+'">'+TYPE[x.type]+'</span>';}],
+    ['unike','Unike',null],['besok','Besøk',null],
+    ['k_hero','Klikk øverst',function(x){return x.klikk.hero;}],
+    ['k_sticky','Klikk mobil',function(x){return x.klikk.sticky;}],
+    ['k_final','Klikk nederst',function(x){return x.klikk.final;}],
+    ['klikkTotalt','Klikk totalt',null],['salg','Salg',null],
+    ['omsetning','Omsetning',function(x){return kr(x.omsetning);}],
+    ['konv','Konvertering',function(x){return pst(x.salg,x.unike);}]
+  ];
+  function verdi(x,k){
+    if(k==='kilde') return x.kilde;
+    if(k.indexOf('k_')===0) return x.klikk[k.slice(2)];
+    if(k==='konv') return x.unike?x.salg/x.unike:0;
+    return x[k];
+  }
+  function tegnKilder(){
+    var s=sortering, rader=data.kilder.slice().sort(function(a,b){
+      var va=verdi(a,s.nokkel), vb=verdi(b,s.nokkel);
+      if(typeof va==='string') return s.retning*va.localeCompare(vb,'nb');
+      return s.retning*(va-vb) || (b.besok-a.besok);
+    });
+    $('kilder').innerHTML='<thead><tr>'+KOLONNER.map(function(c){
+      var aktiv=c[0]===s.nokkel;
+      return '<th scope="col"><button type="button" data-sort="'+c[0]+'"'+(aktiv?' aria-sort="'+(s.retning<0?'descending':'ascending')+'"':'')+'>'+c[1]+
+        '<span class="pil" aria-hidden="true">'+(aktiv?(s.retning<0?'▼':'▲'):'▼')+'</span></button></th>';
+    }).join('')+'</tr></thead><tbody>'+(rader.length?rader.map(function(x){
+      return '<tr>'+KOLONNER.map(function(c){return '<td>'+(c[2]?c[2](x):esc(x[c[0]]))+'</td>';}).join('')+'</tr>';
+    }).join(''):'<tr><td colspan="'+KOLONNER.length+'" class="tom">Ingen besøk i perioden ennå.</td></tr>')+'</tbody>';
+  }
+  $('kilder').addEventListener('click',function(e){
+    var b=e.target.closest('button[data-sort]'); if(!b) return;
+    var k=b.getAttribute('data-sort');
+    sortering = sortering.nokkel===k ? {nokkel:k, retning:-sortering.retning} : {nokkel:k, retning:k==='kilde'?1:-1};
+    tegnKilder();
+  });
+  $('login').onsubmit=function(e){
+    e.preventDefault(); $('feil').textContent='Logger inn …';
+    vjPost({action:'admin', passord:$('pw').value}).then(function(d){
+      $('pw').value='';
+      if(!d.ok){ $('feil').textContent=d.error||'Feil passord'; return; }
+      okt=d.okt; try{ sessionStorage.setItem('vj_admin_okt',okt); }catch(e){}
+      $('feil').textContent=''; hent();
+    }).catch(function(e){ $('feil').textContent=e.message==='API ikke satt opp'?'Backend er ikke koblet til ennå (VJ_API i assets/config.js).':'Fikk ikke kontakt med backend.'; });
+  };
+  $('periode').onchange=hent;
+  $('oppdater').onclick=hent;
+  $('ut').onclick=function(){ vjPost({action:'logout', okt:okt}).catch(function(){}); visLogin(''); };
+  function slug(v){ return String(v||'').toLowerCase().trim().replace(/æ/g,'ae').replace(/ø/g,'o').replace(/å/g,'a').replace(/\s+/g,'-').replace(/[^a-z0-9_-]/g,'').slice(0,40); }
+  $('lagLenke').onclick=function(){
+    var s=slug($('partner').value); if(!s){ $('partner').focus(); return; }
+    var base=location.origin+location.pathname.replace(/admin\.html$/,'');
+    $('nyLenke').textContent=base+'?fra='+encodeURIComponent(s); $('resultat').hidden=false; $('kopier').textContent='Kopier';
+  };
+  $('kopier').onclick=function(){
+    var t=$('nyLenke').textContent;
+    (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){ $('kopier').textContent='Kopiert!'; })
+      .catch(function(){ var r=document.createRange(); r.selectNodeContents($('nyLenke')); var sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); });
+  };
+  if(okt) hent();
 })();
 </script>
 </body>

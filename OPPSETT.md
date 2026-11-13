@@ -57,7 +57,7 @@ Ingen hemmeligheter ligger i dette repoet. Vipps-nøkler og adminpassord ligger 
 | `MAKS_NEDLASTINGER` | `5` |
 
 5. Velg funksjonen **`oppsett`** i menyen øverst og trykk **Kjør**. Godkjenn tilgangene Google ber om. Funksjonen lager regnearket og en utløser som sjekker ubetalte ordre hvert 5. minutt.
-6. Åpne funksjonen **`settAdminPassord`**, bytt ut `SKRIV-PASSORDET-HER` med et passord på minst 10 tegn, kjør den, og **slett passordet fra koden** etterpå.
+6. Åpne funksjonen **`settAdminPassord`**, bytt ut `SKRIV-PASSORDET-HER` med et passord på minst 12 tegn, kjør den, og **slett passordet fra koden** etterpå.
 7. Kjør **`forberedMaster`**. Den lager en kopi av heftet med plass til vannmerket. Kjør den på nytt hver gang du laster opp en ny versjon av heftet (og oppdater `MASTER_PDF_ID` hvis det er en ny fil).
 8. Kjør **`testVannmerke`**. Den lager `TEST-vannmerke.pdf` i Disken din. Åpne den og sjekk at linja nederst ser riktig ut.
 
@@ -91,6 +91,19 @@ Med `VIPPS_ENV=test`:
 3. Gjør ett ekte kjøp selv og refunder det i Vipps-portalen.
 4. Fyll inn foretaksnavn, adresse og e-post i `vilkar.html`, `personvern.html` og bunnteksten på forsiden.
 
+## Samarbeidslenker
+
+Gi hver samarbeidspartner sin egen lenke med `?fra=navn`, for eksempel:
+
+- `…/vegansk-juleribbe/?fra=gronnehverdag`
+- `…/vegansk-juleribbe/?fra=veganmamma`
+
+Lag lenkene i adminpanelet under **Lag samarbeidslenke**. I tabellen **Kilder og samarbeid** ser du for hver partner:
+unike besøkende, besøk, trykk på hver av de tre Vipps-knappene (øverst, mobil nederst på skjermen, kjøpskortet nederst),
+salg, omsetning og konvertering. Trykk på en kolonne for å sortere, og velg periode øverst.
+
+Har en kunde fulgt flere lenker, teller den siste lenken hun kom fra.
+
 ## Markedsføring med sporing
 
 Legg til `?utm_source=` og `?utm_campaign=` på lenkene du deler. Da ser du i adminpanelet hvor salget kommer fra:
@@ -113,7 +126,9 @@ Dette er innebygd:
 - **Betalingen sjekkes alltid direkte hos Vipps**, aldri ut fra hva nettleseren sier. Det går ikke an å «late som» man har betalt.
 - **Hemmelig nøkkel per ordre.** Takkesiden må ha nøkkelen fra Vipps-returadressen for å vise nedlastingslenken, så ingen kan gjette seg til andres ordrenummer.
 - **Nedlastingslenker** er lange tilfeldige koder, går ut etter 7 dager og virker maks 5 ganger.
-- **Adminpassordet** lagres bare som en hash. Etter 10 feil forsøk stenges innloggingen i 15 minutter.
+- **Adminpassordet** lagres bare som en saltet hash (2000 runder SHA-256). Etter 10 feil forsøk stenges innloggingen i 15 minutter.
+- **Innlogging i adminpanelet** gir en tilfeldig nøkkel som varer i 2 timer og slettes ved «Logg ut». Passordet lagres aldri i nettleseren.
+- **Adminsiden** har streng innholdssikkerhet (CSP), så den bare kan snakke med Apps Script, og den skjules for søkemotorer.
 - **Regnearket** er beskyttet mot formel-injeksjon fra tekst som kommer fra nettet.
 - **Bremse mot misbruk:** maks 30 nye kjøp og 300 sidevisninger per minutt.
 - **«Send ny lenke»** svarer likt uansett om e-posten finnes, så ingen kan sjekke hvem som har kjøpt.
