@@ -1,0 +1,7 @@
+# Virker først når siden ligger på eget domene (veganskjuleribbe.no).
+# Takk-, nedlastings- og adminsiden har noindex i HTML, så de stenges ikke her
+# (Google må kunne lese dem for å se noindex).
+User-agent: *
+Allow: /
+
+Sitemap: https://ibh2511.github.io/vegansk-juleribbe/sitemap.xml

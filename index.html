@@ -7,10 +7,62 @@
 <link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta name="theme-color" content="#5e0f16">
-<title>Vegansk juleribbe</title>
-<meta name="description" content="Oppskriftshefte på vegansk juleribbe med sprø, stekt svor. Last ned med en gang for 99 kr med Vipps.">
+<title>Vegansk juleribbe med sprø svor – oppskrift steg for steg</title>
+<meta name="description" content="Vegansk ribbe av seitan med ekte sprø svor. Oppskriftshefte med bilder, fremdriftsplan og handleliste. 99 kr med Vipps til og med 2. desember, deretter 149 kr.">
+<!-- Bytt til https://veganskjuleribbe.no/ her, i JSON-LD under, i robots.txt og i sitemap.xml når domenet er koblet til -->
+<link rel="canonical" href="https://ibh2511.github.io/vegansk-juleribbe/">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="nb_NO">
+<meta property="og:site_name" content="Vegansk juleribbe">
+<meta property="og:url" content="https://ibh2511.github.io/vegansk-juleribbe/">
 <meta property="og:title" content="Vegansk juleribbe med sprø svor">
-<meta property="og:description" content="Hele oppskriften steg for steg, med bilder. 99 kr med Vipps.">
+<meta property="og:description" content="Hele oppskriften steg for steg, med bilder. Lanseringspris 99 kr til og med 2. desember.">
+<!-- Legg til når bildet finnes (1200×630): <meta property="og:image" content="https://ibh2511.github.io/vegansk-juleribbe/assets/og-bilde.jpg"> -->
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Person",
+      "@id": "https://ibh2511.github.io/vegansk-juleribbe/#celia",
+      "name": "Celia Grimsgaard",
+      "sameAs": ["https://www.instagram.com/cgrimsgaard/"]
+    },
+    {
+      "@type": "Product",
+      "@id": "https://ibh2511.github.io/vegansk-juleribbe/#hefte",
+      "name": "Vegansk juleribbe med sprø, stekt svor – oppskriftshefte (PDF)",
+      "description": "Oppskriftshefte på vegansk juleribbe av hjemmelaget seitan, med sprø svor. Steg for steg med bilder, fremdriftsplan, tilbehør, saus og handleliste.",
+      "category": "Oppskriftshefte",
+      "brand": { "@type": "Brand", "name": "Vegansk juleribbe" },
+      "author": { "@id": "https://ibh2511.github.io/vegansk-juleribbe/#celia" },
+      "offers": {
+        "@type": "Offer",
+        "url": "https://ibh2511.github.io/vegansk-juleribbe/",
+        "price": "99.00",
+        "priceCurrency": "NOK",
+        "priceValidUntil": "2026-12-02",
+        "availability": "https://schema.org/InStock",
+        "itemCondition": "https://schema.org/NewCondition"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "Hvordan får jeg heftet etter kjøp?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Rett etter betaling får du en nedlastingslenke på siden og på e-post. Lenken virker i 7 dager." } },
+        { "@type": "Question", "name": "Er det vanskelig å lage seitan?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Nei. Heftet viser hvert steg med bilder, og du trenger ikke spesielt utstyr." } },
+        { "@type": "Question", "name": "Hvor får jeg tak i ingrediensene?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Du kan lage seitan fra vanlig hvetemel, som finnes i alle butikker, eller bruke glutenmel for å spare tid. Heftet viser begge deler, og handlelisten står bakerst." } },
+        { "@type": "Question", "name": "Inneholder den allergener?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Ja, seitan er laget av hvetegluten og passer ikke for deg med cøliaki eller glutenintoleranse." } }
+      ]
+    }
+  ]
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
@@ -46,6 +98,8 @@ header.top{background:#5e0f16;color:var(--cream);text-align:center;font-weight:6
 .price{display:flex;flex-direction:column;line-height:1.1}
 .price b{font-family:"Playfair Display",serif;font-size:44px;color:var(--ink)}
 .price span{color:var(--muted);font-size:14px;margin-top:4px}
+.lansering{font-size:14px;color:var(--muted);margin:-6px 0 14px}
+.lansering b{color:var(--green)}
 .chip{background:#eef3ee;color:var(--green);font-weight:700;font-size:13px;padding:7px 12px;border-radius:999px;white-space:nowrap}
 .btn-vipps{display:inline-flex;align-items:center;justify-content:center;gap:0;white-space:pre;background:var(--vipps);color:#fff;
   font-weight:700;font-size:19px;padding:16px 28px;border-radius:12px;text-decoration:none;border:0;cursor:pointer;
@@ -206,9 +260,10 @@ footer a{color:var(--cream)}
       <p class="lead">Juleribba hele bordet kan spise, med svor som faktisk knaser. Hjemmelaget seitan, forklart steg for steg med bilder.</p>
       <div class="buybox">
         <div class="price-row">
-          <div class="price"><b>99 kr</b><span>Engangskjøp · PDF</span></div>
+          <div class="price"><b data-pris>99 kr</b><span>Engangskjøp · PDF</span></div>
           <span class="chip">Direkte nedlasting</span>
         </div>
+        <p class="lansering" data-lansering><b>Lanseringspris</b> til og med 2. desember. Deretter 149 kr.</p>
         <button class="btn-vipps buy" type="button" data-cta="hero">Kjøp med <strong>Vipps</strong></button>
         <ul class="trust">
           <li><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>Sikker betaling</li>
@@ -258,7 +313,7 @@ footer a{color:var(--cream)}
     <h2>Slik får du heftet</h2>
     <p class="sub">Det tar under ett minutt.</p>
     <div class="steps">
-      <div class="step"><h3>Betal med Vipps</h3><p>Trykk på knappen og godkjenn 99 kr i Vipps-appen.</p></div>
+      <div class="step"><h3>Betal med Vipps</h3><p>Trykk på knappen og godkjenn <span data-pris>99 kr</span> i Vipps-appen.</p></div>
       <div class="step"><h3>Få lenken</h3><p>Du får nedlastingslenken her på siden og på e-post.</p></div>
       <div class="step"><h3>Lag julemiddagen</h3><p>Åpne PDF-en på mobilen eller skriv den ut.</p></div>
     </div>
@@ -315,9 +370,10 @@ footer a{color:var(--cream)}
         <li>Tilbehør, saus og handleliste</li>
       </ul>
       <div class="price-row">
-        <div class="price"><b>99 kr</b><span>Engangskjøp · PDF</span></div>
+        <div class="price"><b data-pris>99 kr</b><span>Engangskjøp · PDF</span></div>
         <span class="chip">Direkte nedlasting</span>
       </div>
+      <p class="lansering" data-lansering><b>Lanseringspris</b> til og med 2. desember. Deretter 149 kr.</p>
       <button class="btn-vipps buy" type="button" data-cta="final">Kjøp med <strong>Vipps</strong></button>
       <ul class="trust">
           <li><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>Sikker betaling</li>
@@ -341,10 +397,34 @@ footer a{color:var(--cream)}
 </footer>
 
 <div class="sticky" id="sticky">
-  <div class="p"><b>99 kr</b><small>Direkte nedlasting</small></div>
+  <div class="p"><b data-pris>99 kr</b><small data-lansering-kort>Lanseringspris</small></div>
   <button class="btn-vipps buy" type="button" data-cta="sticky">Kjøp med <strong>Vipps</strong></button>
 </div>
 
+<script>
+// Lanseringspris: 99 kr til og med 2. desember, deretter 149 kr. Backend tar samme pris.
+(function(){
+  if (Date.now() < new Date(window.VJ_LANSERING_SLUTT || 0).getTime()) return;
+  var pris = (window.VJ_PRIS || 149) + ' kr';
+  document.querySelectorAll('[data-pris]').forEach(function(el){ el.textContent = pris; });
+  document.querySelectorAll('[data-lansering]').forEach(function(el){ el.remove(); });
+  document.querySelectorAll('[data-lansering-kort]').forEach(function(el){ el.textContent = 'Direkte nedlasting'; });
+})();
+</script>
+<script>
+// Strukturerte data følger samme pris: etter lanseringen settes Offer til VJ_PRIS uten priceValidUntil
+(function(){
+  if (Date.now() < new Date(window.VJ_LANSERING_SLUTT || 0).getTime()) return;
+  var el = document.querySelector('script[type="application/ld+json"]'); if (!el) return;
+  try {
+    var d = JSON.parse(el.textContent);
+    (d['@graph'] || []).forEach(function(n){
+      if (n['@type'] === 'Product' && n.offers) { n.offers.price = (window.VJ_PRIS || 149).toFixed(2); delete n.offers.priceValidUntil; }
+    });
+    el.textContent = JSON.stringify(d);
+  } catch (e) {}
+})();
+</script>
 <script>
 // Vis kjøpsknapp nederst på mobil når hovedknappen er scrollet ut av syne
 (function(){
