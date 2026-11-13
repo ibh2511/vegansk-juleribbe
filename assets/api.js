@@ -10,13 +10,21 @@
     return fetch(window.VJ_API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(params) })
       .then(function (r) { return r.json(); });
   };
+  // Husker kampanje, samarbeidslenke (?fra=navn) og nettsiden kunden kom fra, så kjøpet kan knyttes til riktig kilde.
   window.vjUtm = function () {
     var p = new URLSearchParams(location.search), u = {};
-    ['utm_source', 'utm_campaign'].forEach(function (k) {
+    // Ny lenke med kilde i adressen erstatter det vi husket fra før (siste klikk teller).
+    if (p.get('fra') || p.get('utm_source')) {
+      try { ['utm_source', 'utm_campaign', 'fra'].forEach(function (k) { sessionStorage.removeItem('vj_' + k); }); } catch (e) {}
+    }
+    ['utm_source', 'utm_campaign', 'fra'].forEach(function (k) {
       var v = p.get(k);
-      try { if (v) sessionStorage.setItem(k, v); else v = sessionStorage.getItem(k); } catch (e) {}
+      try { if (v) sessionStorage.setItem('vj_' + k, v); else v = sessionStorage.getItem('vj_' + k); } catch (e) {}
       u[k] = v || '';
     });
+    var ref = document.referrer && document.referrer.indexOf(location.host) < 0 ? document.referrer : '';
+    try { if (ref) sessionStorage.setItem('vj_ref', ref); else ref = sessionStorage.getItem('vj_ref') || ''; } catch (e) {}
+    u.ref = ref;
     return u;
   };
   window.vjHit = function () {
@@ -29,7 +37,7 @@
     } catch (e) {}
     var u = window.vjUtm();
     var side = location.pathname.replace(/^.*\//, '/') || '/';
-    window.vjGet({ action: 'hit', side: side, ref: document.referrer && document.referrer.indexOf(location.host) < 0 ? document.referrer : '',
+    window.vjGet({ action: 'hit', side: side, ref: u.ref, fra: u.fra,
       utm_source: u.utm_source, utm_campaign: u.utm_campaign, mobil: /Mobi|Android/i.test(navigator.userAgent) ? 1 : 0, v: v }).catch(function () {});
   };
 })();
