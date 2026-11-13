@@ -1,4 +1,4 @@
-// Pris som oppdaterer seg selv etter dato. Designet er det samme hele tiden, bare beløpet bytter.
+// Pris som oppdaterer seg selv etter dato.
 // Backend (Apps Script) bestemmer prisen og hvilken periode som gjelder, og Vipps tar samme beløp.
 // Siden viser først verdiene fra config.js, og bytter til backendens tall og klokke så snart de er hentet.
 // Sjekker hvert minutt, så prisen bytter også hos den som har siden åpen når lanseringen starter eller slutter.
@@ -22,9 +22,24 @@
     var naa = Date.now() + avvik;
     var fase = naa < C.start ? 'for' : naa < C.slutt ? 'lansering' : 'etter';
     var pris = fase === 'lansering' ? C.lansering : C.ordinaer;
+    var sisteDag = dato(C.slutt - 1);                 // slutt er første dag med ordinær pris
 
     document.documentElement.setAttribute('data-prisfase', fase);
     alle('[data-pris]', function (el) { el.textContent = pris + ' kr'; });
+    alle('[data-forpris]', function (el) { el.textContent = C.ordinaer + ' kr'; el.hidden = fase !== 'lansering'; });
+    alle('[data-spar]', function (el) { el.textContent = 'Spar ' + (C.ordinaer - C.lansering) + ' kr'; el.hidden = fase !== 'lansering'; });
+    alle('[data-chip-vanlig]', function (el) { el.hidden = fase === 'lansering'; });
+    alle('[data-lansering-kort]', function (el) { el.textContent = fase === 'lansering' ? 'Lanseringspris' : 'Direkte nedlasting'; });
+    alle('[data-lansering]', function (el) {
+      // Før og etter lanseringsuka ser kjøpsboksen ut som vanlig: bare prisen, uten ekstra linje.
+      el.hidden = fase !== 'lansering';
+      if (fase === 'lansering') {
+        var igjen = C.slutt - naa, dager = Math.ceil(igjen / 864e5), timer = Math.ceil(igjen / 36e5);
+        el.className = 'lansering na';
+        el.innerHTML = '<span><b>Lanseringspris</b> til og med ' + sisteDag + '</span>' +
+          '<span class="igjen">' + (timer <= 24 ? 'Siste dag!' : dager + ' dager igjen') + '</span>';
+      }
+    });
     // Tekst i vilkårene
     alle('[data-pris-ordinaer]', function (el) { el.textContent = C.ordinaer + ' kr'; });
     alle('[data-pris-lansering]', function (el) { el.textContent = C.lansering + ' kr'; });

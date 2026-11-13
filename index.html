@@ -97,6 +97,15 @@ header.top{background:#5e0f16;color:var(--cream);text-align:center;font-weight:6
 .price{display:flex;flex-direction:column;line-height:1.1}
 .price b{font-family:"Playfair Display",serif;font-size:44px;color:var(--ink)}
 .price span{color:var(--muted);font-size:14px;margin-top:4px}
+.lansering{font-size:14px;color:var(--muted);margin:-6px 0 14px}
+.lansering b{color:var(--green)}
+.lansering.na{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;color:var(--ink)}
+.lansering .igjen{background:#9e1b22;color:#f8f1e3;font-size:12px;font-weight:700;letter-spacing:.02em;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.belop{display:flex;align-items:baseline;gap:10px;white-space:nowrap}
+.forpris{font-family:"Playfair Display",serif;font-size:22px;font-weight:700;color:#8a7a6c;text-decoration:line-through;text-decoration-color:#9e1b22;text-decoration-thickness:2px}
+.chip.spar{background:#9e1b22;color:#f8f1e3}
+.sticky .belop{gap:7px}
+.sticky .forpris{font-size:15px;color:#b9c9bc;text-decoration-color:#f0b9a8}
 [hidden]{display:none!important}
 .chip{background:#eef3ee;color:var(--green);font-weight:700;font-size:13px;padding:7px 12px;border-radius:999px;white-space:nowrap}
 .btn-vipps{display:inline-flex;align-items:center;justify-content:center;gap:0;white-space:pre;background:var(--vipps);color:#fff;
@@ -258,9 +267,10 @@ footer a{color:var(--cream)}
       <p class="lead">Juleribba hele bordet kan spise, med svor som faktisk knaser. Hjemmelaget seitan, forklart steg for steg med bilder.</p>
       <div class="buybox">
         <div class="price-row">
-          <div class="price"><b data-pris>149 kr</b><span>Engangskjøp · PDF</span></div>
-          <span class="chip">Direkte nedlasting</span>
+          <div class="price"><div class="belop"><b data-pris>149 kr</b><s class="forpris" data-forpris hidden>149 kr</s></div><span>Engangskjøp · PDF</span></div>
+          <span class="chip" data-chip-vanlig>Direkte nedlasting</span><span class="chip spar" data-spar hidden></span>
         </div>
+        <p class="lansering" data-lansering hidden></p>
         <button class="btn-vipps buy" type="button" data-cta="hero">Kjøp med <strong>Vipps</strong></button>
         <ul class="trust">
           <li><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>Sikker betaling</li>
@@ -367,9 +377,10 @@ footer a{color:var(--cream)}
         <li>Tilbehør, saus og handleliste</li>
       </ul>
       <div class="price-row">
-        <div class="price"><b data-pris>149 kr</b><span>Engangskjøp · PDF</span></div>
-        <span class="chip">Direkte nedlasting</span>
+        <div class="price"><div class="belop"><b data-pris>149 kr</b><s class="forpris" data-forpris hidden>149 kr</s></div><span>Engangskjøp · PDF</span></div>
+        <span class="chip" data-chip-vanlig>Direkte nedlasting</span><span class="chip spar" data-spar hidden></span>
       </div>
+      <p class="lansering" data-lansering hidden></p>
       <button class="btn-vipps buy" type="button" data-cta="final">Kjøp med <strong>Vipps</strong></button>
       <ul class="trust">
           <li><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>Sikker betaling</li>
@@ -393,7 +404,7 @@ footer a{color:var(--cream)}
 </footer>
 
 <div class="sticky" id="sticky">
-  <div class="p"><b data-pris>149 kr</b><small>Direkte nedlasting</small></div>
+  <div class="p"><span class="belop"><b data-pris>149 kr</b><s class="forpris" data-forpris hidden>149 kr</s></span><small data-lansering-kort>Direkte nedlasting</small></div>
   <button class="btn-vipps buy" type="button" data-cta="sticky">Kjøp med <strong>Vipps</strong></button>
 </div>
 
