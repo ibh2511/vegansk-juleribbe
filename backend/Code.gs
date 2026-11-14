@@ -442,7 +442,7 @@ function sendMail_(to, navn, ordre, token, belop) {
     '<p style="font-size:14px;color:#6b5a4e">Ordrenummer: <b>' + ordre + '</b> · Beløp: ' + (Number(belop) || prisOre_() / 100) + ' kr (0 % mva)<br>' +
     'Du samtykket ved kjøpet til at heftet leveres med en gang, og bekreftet at angreretten dermed faller bort (angrerettloven § 22 bokstav n).</p>' +
     '<p>God jul og lykke til på kjøkkenet!<br>Celia</p></div></div>';
-  GmailApp.sendEmail(to, 'Heftet ditt: Vegansk juleribbe (' + ordre + ')',
+  MailApp.sendEmail(to, 'Heftet ditt: Vegansk juleribbe (' + ordre + ')',
     'Takk for kjøpet! Last ned heftet her: ' + link + '\nOrdrenummer: ' + ordre,
     { htmlBody: html, name: cfg_('AVSENDER_NAVN', 'Vegansk juleribbe'), replyTo: cfg_('SVAR_EPOST', '') || undefined });
 }

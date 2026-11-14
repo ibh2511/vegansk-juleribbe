@@ -260,6 +260,7 @@ tbody tr:hover{background:#fbf7ee}
     b.disabled=true; b.textContent='Lager …'; svar.hidden=true;
     vjPost({action:'testkjop', okt:okt, navn:$('tNavn').value, epost:ep, telefon:$('tTlf').value}).then(function(d){
       b.disabled=false; b.textContent='Lag testkjøp';
+      if(d.ok && !d.ordre){ svar.className='testsvar feil'; svar.textContent='Backend kjenner ikke testkjøp ennå. Lim inn nyeste Code.gs i Apps Script og lag en ny versjon av implementeringen.'; svar.hidden=false; return; }
       if(!d.ok){ if(d.utlogget) return visLogin('Du er logget ut. Logg inn på nytt.'); svar.className='testsvar feil'; svar.textContent=d.error||'Noe gikk galt'; svar.hidden=false; return; }
       svar.className='testsvar'; svar.textContent='';
       svar.appendChild(document.createTextNode('Testkjøp '+d.ordre+' er laget. '+(d.epostSendt?'E-posten er sendt til '+d.epost+'. ':'E-posten kunne ikke sendes, se loggen i Apps Script. ')));
