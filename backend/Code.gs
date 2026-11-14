@@ -113,6 +113,7 @@ function route_(e, body) {
       case 'stats':    return json_(adminStats_(p.okt, p.dager));
       case 'logout':   return json_(adminLogout_(p.okt));
       case 'nullstill': return json_(adminNullstill_(p.okt, p.angre));
+      case 'testkjop': return json_(adminTestkjop_(p));
       case 'resend':   return json_(resend_(p.epost));
       default:         return json_({ ok: true, info: 'Vegansk juleribbe API' });
     }
@@ -217,7 +218,7 @@ function createPayment_(p) {
  * gjette seg til andres ordrenummer og få nedlastingslenken deres.
  */
 function checkOrder_(ordre, nokkel, fraUtloser) {
-  if (!/^VJ-\d{5,}$/.test(ordre || '')) throw new Error('Ugyldig ordrenummer');
+  if (!/^(VJ|TEST)-\d{5,}$/.test(ordre || '')) throw new Error('Ugyldig ordrenummer');
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -516,6 +517,42 @@ function adminNullstill_(okt, angre) {
   return { ok: true, statsFra: props.getProperty('STATS_FRA') || '' };
 }
 
+/**
+ * Testkjøp fra adminpanelet: lager en betalt ordre uten Vipps, sender den ekte e-posten
+ * og gir adressen til takkesiden. Ordrenummeret starter med TEST- og telles ikke i statistikken.
+ */
+function adminTestkjop_(p) {
+  try { sjekkOkt_(p.okt); } catch (e) { return { ok: false, error: e.message, utlogget: true }; }
+  begrens_('testkjop', 10);
+  var epost = String(p.epost || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(epost)) return { ok: false, error: 'Skriv inn en gyldig e-postadresse' };
+  var props = PropertiesService.getScriptProperties();
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  var row;
+  try {
+    var n = Number(props.getProperty('NESTE_TEST') || 10001);
+    props.setProperty('NESTE_TEST', String(n + 1));
+    var dager = Number(cfg_('LENKE_DAGER', '7'));
+    row = {}; ORDRE_KOLONNER.forEach(function (k) { row[k] = ''; });
+    row.ordre = 'TEST-' + n; row.opprettet = new Date(); row.status = 'BETALT'; row.betalt = row.opprettet;
+    row.navn = String(p.navn || 'Test Testesen').slice(0, 80); row.epost = epost.slice(0, 120);
+    row.telefon = formatPhone_(String(p.telefon || '').slice(0, 20)); row.nedlastinger = 0;
+    row.token = nyNokkel_(40); row.nokkel = nyNokkel_(); row.utloper = new Date(Date.now() + dager * 864e5);
+    row.belop = prisOre_(row.opprettet) / 100; row.kilde = 'test'; row.cta = '';
+    sheet_(ORDRE_ARK).appendRow(ORDRE_KOLONNER.map(function (k) { return celle_(row[k]); }));
+  } finally { lock.releaseLock(); }
+  var sendt = true;
+  try {
+    sendMail_(row.epost, row.navn, row.ordre, row.token, row.belop);
+    var o = findOrder_('ordre', row.ordre);
+    if (o) updateOrder_(o.row, { epost_sendt: new Date() });
+  } catch (err) { sendt = false; console.error('Test-e-post feilet: ' + err); }
+  var site = cfg_('SITE_URL').replace(/\/$/, '');
+  return { ok: true, ordre: row.ordre, epostSendt: sendt, epost: row.epost,
+    takkUrl: site + '/takk.html?ordre=' + encodeURIComponent(row.ordre) + '&k=' + row.nokkel };
+}
+
 function adminStats_(okt, antallDager) {
   try { sjekkOkt_(okt); } catch (e) { return { ok: false, error: e.message, utlogget: true }; }
 
@@ -553,6 +590,7 @@ function adminStats_(okt, antallDager) {
   var po = prisOppsett_();
   var ordre = sheet_(ORDRE_ARK).getDataRange().getValues().slice(1);
   ordre.forEach(function (r) {
+    if (String(r[O.ordre]).indexOf('TEST-') === 0) return; // testkjøp fra adminpanelet telles ikke
     if (!iPerioden(r[O.opprettet])) return;
     var gammelKilde = String(r[O.kilde] || '').split(' / '); // ordre fra før cta/partner fikk egne kolonner
     var cta = r[O.cta] || gammelKilde[0] || 'annet';

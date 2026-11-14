@@ -51,6 +51,12 @@ tbody tr:hover{background:#fbf7ee}
 .lag{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .lag input{max-width:260px}
 .lag .btn{margin-top:0;font-size:16px;min-height:46px;padding:10px 18px}
+.test{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px}
+.test input{min-height:46px}
+.test .btn{margin-top:0;font-size:16px;min-height:46px;padding:10px 18px}
+@media (max-width:760px){.test{grid-template-columns:1fr}}
+.testsvar{margin-top:12px;background:#eef3ee;border-radius:8px;padding:10px 12px;font-size:15px}
+.testsvar.feil{background:#fbeaea;color:var(--red-dark)}
 .btn.fare{background:var(--red)}
 .statsfra{background:#f7f1e4;border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:14px;margin-bottom:12px}
 .resultat{margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -120,6 +126,18 @@ tbody tr:hover{background:#fbf7ee}
     <div class="panel">
       <h2>Siste ordre</h2>
       <div class="tabell"><table id="ordre"></table></div>
+    </div>
+
+    <div class="panel">
+      <h2>Testkjøp</h2>
+      <p class="hint">Simulerer et betalt Vipps-kjøp uten å trekke penger. Du får den ekte e-posten med nedlastingslenke, og kan åpne takkesiden og laste ned heftet med vannmerke. Testkjøp får ordrenummer TEST-… og telles ikke i statistikken.</p>
+      <div class="test">
+        <input id="tNavn" placeholder="Navn" maxlength="80" autocomplete="off" value="Test Testesen">
+        <input id="tEpost" type="email" placeholder="E-post" maxlength="120" autocomplete="off">
+        <input id="tTlf" placeholder="Telefon (valgfritt)" maxlength="20" autocomplete="off">
+        <button class="btn" type="button" id="testkjop">Lag testkjøp</button>
+      </div>
+      <p class="testsvar" id="testSvar" hidden></p>
     </div>
 
     <div class="panel">
@@ -235,6 +253,19 @@ tbody tr:hover{background:#fbf7ee}
   };
   $('angre').onclick=function(){
     vjPost({action:'nullstill', okt:okt, angre:true}).then(function(d){ if(d.ok) hent(); }).catch(function(){});
+  };
+  $('testkjop').onclick=function(){
+    var b=$('testkjop'), svar=$('testSvar'), ep=$('tEpost').value.trim();
+    if(!ep){ $('tEpost').focus(); return; }
+    b.disabled=true; b.textContent='Lager …'; svar.hidden=true;
+    vjPost({action:'testkjop', okt:okt, navn:$('tNavn').value, epost:ep, telefon:$('tTlf').value}).then(function(d){
+      b.disabled=false; b.textContent='Lag testkjøp';
+      if(!d.ok){ if(d.utlogget) return visLogin('Du er logget ut. Logg inn på nytt.'); svar.className='testsvar feil'; svar.textContent=d.error||'Noe gikk galt'; svar.hidden=false; return; }
+      svar.className='testsvar'; svar.textContent='';
+      svar.appendChild(document.createTextNode('Testkjøp '+d.ordre+' er laget. '+(d.epostSendt?'E-posten er sendt til '+d.epost+'. ':'E-posten kunne ikke sendes, se loggen i Apps Script. ')));
+      var a=document.createElement('a'); a.href=d.takkUrl; a.target='_blank'; a.rel='noopener'; a.textContent='Åpne takkesiden →'; svar.appendChild(a);
+      svar.hidden=false; hent();
+    }).catch(function(){ b.disabled=false; b.textContent='Lag testkjøp'; svar.className='testsvar feil'; svar.textContent='Fikk ikke kontakt med backend.'; svar.hidden=false; });
   };
   $('periode').onchange=hent;
   $('oppdater').onclick=hent;

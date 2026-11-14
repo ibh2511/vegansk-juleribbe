@@ -90,6 +90,8 @@ Med `VIPPS_ENV=test`:
 4. Prøv å avbryte en betaling og sjekk at siden sier at ingenting ble trukket.
 5. Logg inn på `/admin.html` og se at ordren og besøkene vises.
 
+**Testkjøp uten Vipps:** I adminpanelet under **Testkjøp** kan du skrive inn din egen e-post. Da lages en betalt testordre (TEST-…), du får den ekte e-posten, og du kan åpne takkesiden og laste ned heftet med vannmerke. Testkjøp telles ikke i statistikken.
+
 ## 8. Lansering
 
 1. Bytt Vipps-verdiene til **produksjonsnøklene** og sett `VIPPS_ENV` til `prod`.
