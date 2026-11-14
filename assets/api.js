@@ -31,7 +31,9 @@
   window.vjInApp = function () {
     var ua = navigator.userAgent || '';
     var ios = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
-    var app = /Instagram/i.test(ua) ? 'Instagram' : /FBAN|FBAV|FB_IAB|FBIOS|FB4A/i.test(ua) ? 'Facebook' : /Messenger/i.test(ua) ? 'Messenger' :
+    // Messenger må sjekkes før Facebook, fordi Messenger også har Facebook-merker i nettleser-ID-en
+    var app = /Instagram/i.test(ua) ? 'Instagram' : /Messenger|Orca-Android|FBAN\/(MessengerForiOS|MessengerLiteForiOS)/i.test(ua) ? 'Messenger' :
+      /FBAN|FBAV|FB_IAB|FBIOS|FB4A/i.test(ua) ? 'Facebook' :
       /TikTok|musical_ly|Bytedance/i.test(ua) ? 'TikTok' : /Snapchat/i.test(ua) ? 'Snapchat' : /LinkedInApp/i.test(ua) ? 'LinkedIn' :
       /Pinterest/i.test(ua) ? 'Pinterest' : /; wv\)/.test(ua) ? 'appen' : '';
     return app ? { app: app, ios: ios } : null;
