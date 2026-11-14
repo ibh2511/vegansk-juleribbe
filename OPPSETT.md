@@ -90,6 +90,8 @@ Med `VIPPS_ENV=test`:
 4. Prøv å avbryte en betaling og sjekk at siden sier at ingenting ble trukket.
 5. Logg inn på `/admin.html` og se at ordren og besøkene vises.
 
+**Testkjøp uten Vipps:** I adminpanelet under **Testkjøp** kan du skrive inn din egen e-post. Da lages en betalt testordre (TEST-…), du får den ekte e-posten, og du kan åpne takkesiden og laste ned heftet med vannmerke. Testkjøp telles ikke i statistikken.
+
 ## 8. Lansering
 
 1. Bytt Vipps-verdiene til **produksjonsnøklene** og sett `VIPPS_ENV` til `prod`.
@@ -109,6 +111,8 @@ unike besøkende, besøk, trykk på hver av de tre Vipps-knappene (øverst, mobi
 salg, omsetning og konvertering. Trykk på en kolonne for å sortere, og velg periode øverst.
 
 Har en kunde fulgt flere lenker, teller den siste lenken hun kom fra.
+
+**Nullstill statistikk** nederst i adminpanelet lar tellingen starte på null, for eksempel når en kampanje starter. Ingen ordre eller besøk slettes (tidspunktet lagres som `STATS_FRA` i Skriptegenskaper), og du kan angre.
 
 ## Markedsføring med sporing
 
