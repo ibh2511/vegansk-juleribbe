@@ -473,12 +473,8 @@ function sendMail_(to, navn, ordre, token, belop) {
     '<tr><td style="padding:6px 18px;color:#6b5a4e">Produkt</td><td align="right" style="padding:6px 18px">Heftet som PDF</td></tr>' +
     '<tr><td style="padding:6px 18px 14px;color:#6b5a4e;border-top:1px solid #e6d8bf">Betalt</td><td align="right" style="padding:6px 18px 14px;font-weight:bold;border-top:1px solid #e6d8bf">' + kr + ' kr</td></tr>' +
     '</table></td></tr>' +
-    // Tips
-    '<tr><td style="padding:18px 32px 4px;' + sans + ';font-size:15px;line-height:1.55;color:#2a1d17">' +
-    '<p style="margin:0"><b style="color:#741218">Tips:</b> Lagre heftet på telefonen eller skriv det ut, så har du det klart på kjøkkenet.</p>' +
-    '</td></tr>' +
     // Hilsen
-    '<tr><td style="padding:22px 32px 30px;' + sans + ';font-size:17px;line-height:1.5;color:#2a1d17">' +
+    '<tr><td style="padding:28px 32px 30px;' + sans + ';font-size:17px;line-height:1.5;color:#2a1d17">' +
     '<p style="margin:0">God jul!</p>' +
     '<p style="margin:4px 0 0;' + serif + ';font-size:24px;font-style:italic;color:#741218">Celia</p>' +
     '</td></tr>' +
@@ -491,7 +487,7 @@ function sendMail_(to, navn, ordre, token, belop) {
     '<div style="' + serif + ';font-size:19px;color:#f8f1e3">Følg meg på Instagram</div>' +
     '<div style="margin:4px 0 14px"><a href="https://www.instagram.com/cgrimsgaard/" style="color:#c8a04a;font-weight:bold;text-decoration:none">@cgrimsgaard</a> for flere oppskrifter og julestemning</div>' +
     '<div style="border-top:1px solid #4a3a30;padding-top:14px;color:#b8a690;font-size:12px">' +
-    'Heftet er merket med navnet ditt og ordrenummeret og er kun til eget bruk.<br>' +
+    'Heftet er personlig merket og kun til eget bruk.<br>' +
     'Spørsmål? Bare svar på denne e-posten.</div>' +
     '</td></tr>' +
     '</table></td></tr></table></body></html>';
@@ -500,7 +496,7 @@ function sendMail_(to, navn, ordre, token, belop) {
     'Hei ' + fornavn + '!\n\n' +
     'Takk for kjøpet. Her er heftet ditt med oppskriften på vegansk juleribbe med sprø, stekt svor.\n\n' +
     'Last ned heftet: ' + link + '\n\n' +
-    'Lenken virker i ' + dager + ' dager. Heftet er merket med navnet ditt og ordrenummeret og er kun til eget bruk.\n\n' +
+    'Lenken virker i ' + dager + ' dager. Heftet er personlig merket og kun til eget bruk.\n\n' +
     'Ordrenummer: ' + ordre + '\n' +
     'Beløp: ' + kr + ' kr\n' +
     'Du samtykket ved kjøpet til at heftet leveres med en gang, og bekreftet at angreretten dermed faller bort (angrerettloven § 22 bokstav n).\n\n' +
