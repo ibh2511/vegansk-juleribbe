@@ -459,6 +459,9 @@ function sendMail_(to, navn, ordre, token, belop) {
     '<tr><td style="padding:18px 32px 8px;' + sans + ';font-size:17px;line-height:1.6;color:#2a1d17">' +
     '<p style="margin:0 0 14px">Hei ' + escapeHtml_(fornavn) + '!</p>' +
     '<p style="margin:0">Her er heftet ditt med oppskriften på vegansk juleribbe med sprø, stekt svor. Lykke til på kjøkkenet, dette blir godt.</p>' +
+    // Samme slagord som på forsiden av heftet
+    '<p style="margin:22px 0 0;text-align:center"><span style="display:block;' + sans + ';font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#9e1b22;font-weight:bold">Tradisjon på en ny måte</span>' +
+    '<span style="display:block;margin-top:6px;' + serif + ';font-size:19px;font-style:italic;color:#741218">All den kjente julesmaken, med sprø svor, helt uten kjøtt.</span></p>' +
     '</td></tr>' +
     '<tr><td align="center" style="padding:26px 32px 8px">' +
     '<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="background:#1f3d2b;border-radius:999px">' +
@@ -476,7 +479,7 @@ function sendMail_(to, navn, ordre, token, belop) {
     // Hilsen
     '<tr><td style="padding:28px 32px 30px;' + sans + ';font-size:17px;line-height:1.5;color:#2a1d17">' +
     '<p style="margin:0">God jul!</p>' +
-    '<p style="margin:4px 0 0;' + serif + ';font-size:24px;font-style:italic;color:#741218">Celia</p>' +
+    '<p style="margin:4px 0 0;' + serif + ';font-size:24px;font-style:italic;color:#741218">Celia Grimsgaard</p>' +
     '</td></tr>' +
     // Bunn
     '<tr><td style="background:#9e1b22;border-top:2px solid #c8a04a;font-size:0;line-height:0;height:6px">&nbsp;</td></tr>' +
@@ -495,13 +498,14 @@ function sendMail_(to, navn, ordre, token, belop) {
     // Full tekstversjon ved siden av HTML: e-post med bare en kort tekstdel havner lettere i søppelpost
     'Hei ' + fornavn + '!\n\n' +
     'Takk for kjøpet. Her er heftet ditt med oppskriften på vegansk juleribbe med sprø, stekt svor.\n\n' +
+    'Tradisjon på en ny måte: all den kjente julesmaken, med sprø svor, helt uten kjøtt.\n\n' +
     'Last ned heftet: ' + link + '\n\n' +
     'Lenken virker i ' + dager + ' dager. Heftet er personlig merket og kun til eget bruk.\n\n' +
     'Ordrenummer: ' + ordre + '\n' +
     'Beløp: ' + kr + ' kr\n' +
     'Du samtykket ved kjøpet til at heftet leveres med en gang, og bekreftet at angreretten dermed faller bort (angrerettloven § 22 bokstav n).\n\n' +
     'Har du spørsmål, kan du svare på denne e-posten.\n\n' +
-    'God jul og lykke til på kjøkkenet!\nCelia',
+    'God jul og lykke til på kjøkkenet!\nCelia Grimsgaard',
     { htmlBody: html, name: cfg_('AVSENDER_NAVN', 'Vegansk juleribbe'), replyTo: cfg_('SVAR_EPOST', '') || undefined });
 }
 
