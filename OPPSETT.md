@@ -110,6 +110,8 @@ salg, omsetning og konvertering. Trykk på en kolonne for å sortere, og velg pe
 
 Har en kunde fulgt flere lenker, teller den siste lenken hun kom fra.
 
+**Nullstill statistikk** nederst i adminpanelet lar tellingen starte på null, for eksempel når en kampanje starter. Ingen ordre eller besøk slettes (tidspunktet lagres som `STATS_FRA` i Skriptegenskaper), og du kan angre.
+
 ## Markedsføring med sporing
 
 Legg til `?utm_source=` og `?utm_campaign=` på lenkene du deler. Da ser du i adminpanelet hvor salget kommer fra:

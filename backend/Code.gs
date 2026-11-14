@@ -112,6 +112,7 @@ function route_(e, body) {
       case 'admin':    return json_(adminLogin_(p.passord));
       case 'stats':    return json_(adminStats_(p.okt, p.dager));
       case 'logout':   return json_(adminLogout_(p.okt));
+      case 'nullstill': return json_(adminNullstill_(p.okt, p.angre));
       case 'resend':   return json_(resend_(p.epost));
       default:         return json_({ ok: true, info: 'Vegansk juleribbe API' });
     }
@@ -506,6 +507,15 @@ function sjekkOkt_(okt) {
 
 /* ---- Statistikk ---- */
 
+/** Nullstiller statistikken ved å la tellingen starte på nytt fra nå. Ingen data slettes, så det kan angres. */
+function adminNullstill_(okt, angre) {
+  try { sjekkOkt_(okt); } catch (e) { return { ok: false, error: e.message, utlogget: true }; }
+  var props = PropertiesService.getScriptProperties();
+  if (angre === true || angre === 'true' || angre === '1') props.deleteProperty('STATS_FRA');
+  else props.setProperty('STATS_FRA', new Date().toISOString());
+  return { ok: true, statsFra: props.getProperty('STATS_FRA') || '' };
+}
+
 function adminStats_(okt, antallDager) {
   try { sjekkOkt_(okt); } catch (e) { return { ok: false, error: e.message, utlogget: true }; }
 
@@ -513,7 +523,9 @@ function adminStats_(okt, antallDager) {
   var dag = function (d) { return Utilities.formatDate(new Date(d), tz, 'yyyy-MM-dd'); };
   var n = Number(antallDager) || 0;
   var fra = n ? dag(new Date(Date.now() - (n - 1) * 864e5)) : '0000';
-  var iPerioden = function (d) { return dag(d) >= fra; };
+  var statsFra = cfg_('STATS_FRA', '');
+  var fraTid = statsFra ? new Date(statsFra).getTime() : 0; // satt med «Nullstill statistikk»
+  var iPerioden = function (d) { return dag(d) >= fra && new Date(d).getTime() >= fraTid; };
 
   var perDag = {}, kilder = {}, enheter = { mobil: 0, pc: 0 };
   var dagRad = function (k) { return perDag[k] = perDag[k] || { besok: 0, unike: {}, klikk: 0, salg: 0, omsetning: 0 }; };
@@ -575,7 +587,7 @@ function adminStats_(okt, antallDager) {
       nedlastinger: r[O.nedlastinger], belop: r[O.belop], cta: r[O.cta] || String(r[O.kilde] || '').split(' / ')[0], partner: r[O.partner] };
   });
 
-  return { ok: true, periode: n, totalt: tot, dager: dager, kilder: liste, knapper: knapper, enheter: enheter, siste: siste };
+  return { ok: true, periode: n, statsFra: statsFra, totalt: tot, dager: dager, kilder: liste, knapper: knapper, enheter: enheter, siste: siste };
 }
 
 /* ------------------------------------------------------------------ */

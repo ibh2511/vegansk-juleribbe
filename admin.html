@@ -51,6 +51,8 @@ tbody tr:hover{background:#fbf7ee}
 .lag{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .lag input{max-width:260px}
 .lag .btn{margin-top:0;font-size:16px;min-height:46px;padding:10px 18px}
+.btn.fare{background:var(--red)}
+.statsfra{background:#f7f1e4;border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:14px;margin-bottom:12px}
 .resultat{margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .resultat code{background:#f7f1e4;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px;word-break:break-all}
 .venstre th,.venstre td{text-align:left}
@@ -119,6 +121,16 @@ tbody tr:hover{background:#fbf7ee}
       <h2>Siste ordre</h2>
       <div class="tabell"><table id="ordre"></table></div>
     </div>
+
+    <div class="panel">
+      <h2>Nullstill statistikk</h2>
+      <p class="hint">Bruk denne når en kampanje starter. Tellingen av besøk, klikk og salg begynner da på null. Ingen ordre slettes, kundene kan fortsatt laste ned, og du kan angre.</p>
+      <p class="statsfra" id="statsFra" hidden></p>
+      <div class="lag">
+        <button class="btn fare" type="button" id="nullstill">Nullstill statistikk</button>
+        <button class="lenke" type="button" id="angre" hidden>Angre og vis alt igjen</button>
+      </div>
+    </div>
   </div>
 </main>
 <script>
@@ -139,7 +151,7 @@ tbody tr:hover{background:#fbf7ee}
   function hent(){
     vjPost({action:'stats', okt:okt, dager:$('periode').value}).then(function(d){
       if(!d.ok){ return visLogin(d.utlogget ? 'Du er logget ut. Logg inn på nytt.' : (d.error||'Noe gikk galt')); }
-      $('login').hidden=true; $('app').hidden=false; data=d; tegn();
+      $('login').hidden=true; $('app').hidden=false; data=d; tegn(); visStatsFra(d.statsFra);
     }).catch(function(e){ $('feil').textContent='Fikk ikke kontakt med backend: '+e.message; });
   }
   function tegn(){
@@ -204,6 +216,25 @@ tbody tr:hover{background:#fbf7ee}
       okt=d.okt; try{ sessionStorage.setItem('vj_admin_okt',okt); }catch(e){}
       $('feil').textContent=''; hent();
     }).catch(function(e){ $('feil').textContent=e.message==='API ikke satt opp'?'Backend er ikke koblet til ennå (VJ_API i assets/config.js).':'Fikk ikke kontakt med backend.'; });
+  };
+  function visStatsFra(iso){
+    $('statsFra').hidden=!iso; $('angre').hidden=!iso;
+    if(iso) $('statsFra').textContent='Statistikken telles fra '+new Date(iso).toLocaleString('nb-NO',{dateStyle:'long',timeStyle:'short'})+'.';
+  }
+  var bekreftTimer=null;
+  $('nullstill').onclick=function(){
+    var b=$('nullstill');
+    if(!b.dataset.bekreft){ b.dataset.bekreft='1'; b.textContent='Er du sikker? Trykk igjen';
+      bekreftTimer=setTimeout(function(){ delete b.dataset.bekreft; b.textContent='Nullstill statistikk'; },6000); return; }
+    clearTimeout(bekreftTimer); delete b.dataset.bekreft; b.textContent='Nullstiller …'; b.disabled=true;
+    vjPost({action:'nullstill', okt:okt}).then(function(d){
+      b.disabled=false; b.textContent='Nullstill statistikk';
+      if(!d.ok) return visLogin(d.utlogget?'Du er logget ut. Logg inn på nytt.':(d.error||'Noe gikk galt'));
+      hent();
+    }).catch(function(){ b.disabled=false; b.textContent='Nullstill statistikk'; });
+  };
+  $('angre').onclick=function(){
+    vjPost({action:'nullstill', okt:okt, angre:true}).then(function(d){ if(d.ok) hent(); }).catch(function(){});
   };
   $('periode').onchange=hent;
   $('oppdater').onclick=hent;
