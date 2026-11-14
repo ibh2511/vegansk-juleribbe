@@ -443,7 +443,16 @@ function sendMail_(to, navn, ordre, token, belop) {
     'Du samtykket ved kjøpet til at heftet leveres med en gang, og bekreftet at angreretten dermed faller bort (angrerettloven § 22 bokstav n).</p>' +
     '<p>God jul og lykke til på kjøkkenet!<br>Celia</p></div></div>';
   MailApp.sendEmail(to, 'Heftet ditt: Vegansk juleribbe (' + ordre + ')',
-    'Takk for kjøpet! Last ned heftet her: ' + link + '\nOrdrenummer: ' + ordre,
+    // Full tekstversjon ved siden av HTML: e-post med bare en kort tekstdel havner lettere i søppelpost
+    'Hei ' + fornavn + '!\n\n' +
+    'Takk for kjøpet. Her er heftet ditt med oppskriften på vegansk juleribbe med sprø, stekt svor.\n\n' +
+    'Last ned heftet: ' + link + '\n\n' +
+    'Lenken virker i ' + dager + ' dager. Heftet er merket med navnet ditt og ordrenummeret og er kun til eget bruk.\n\n' +
+    'Ordrenummer: ' + ordre + '\n' +
+    'Beløp: ' + (Number(belop) || prisOre_() / 100) + ' kr (0 % mva)\n' +
+    'Du samtykket ved kjøpet til at heftet leveres med en gang, og bekreftet at angreretten dermed faller bort (angrerettloven § 22 bokstav n).\n\n' +
+    'Har du spørsmål, kan du svare på denne e-posten.\n\n' +
+    'God jul og lykke til på kjøkkenet!\nCelia',
     { htmlBody: html, name: cfg_('AVSENDER_NAVN', 'Vegansk juleribbe'), replyTo: cfg_('SVAR_EPOST', '') || undefined });
 }
 
