@@ -431,17 +431,65 @@ function sendMail_(to, navn, ordre, token, belop) {
   var link = cfg_('SITE_URL').replace(/\/$/, '') + '/last-ned.html?t=' + token;
   var fornavn = String(navn || '').split(' ')[0] || 'du';
   var dager = cfg_('LENKE_DAGER', '7');
+  var kr = Number(belop) || prisOre_() / 100;
+  var kontakt = cfg_('SVAR_EPOST', '');
+  // Samme farger og uttrykk som nettsiden: kremfarget papir, rødt strikkebånd med gull, grønn knapp.
+  // Tabeller og innebygd stil fordi e-postprogrammer (Gmail, Outlook) ikke støtter vanlig CSS. Ingen bilder.
+  var serif = "font-family:'Playfair Display',Georgia,'Times New Roman',serif";
+  var sans = "font-family:'Source Sans 3','Segoe UI',Arial,sans-serif";
   var html =
-    '<div style="font-family:Georgia,serif;max-width:520px;margin:auto;background:#fffaf0;border:1px solid #e6d8bf;border-radius:12px;overflow:hidden">' +
-    '<div style="background:#9e1b22;color:#f8f1e3;padding:20px 24px;font-size:22px">Takk for kjøpet! 🎄</div>' +
-    '<div style="padding:24px;color:#2a1d17;font-family:Arial,sans-serif;font-size:16px;line-height:1.6">' +
-    '<p>Hei ' + escapeHtml_(fornavn) + '!</p>' +
-    '<p>Her er heftet ditt med oppskriften på vegansk juleribbe med sprø, stekt svor.</p>' +
-    '<p style="text-align:center;margin:28px 0"><a href="' + link + '" style="background:#1f3d2b;color:#f8f1e3;padding:14px 26px;border-radius:10px;text-decoration:none;font-weight:bold">Last ned heftet</a></p>' +
-    '<p style="font-size:14px;color:#6b5a4e">Lenken virker i ' + dager + ' dager. Heftet er merket med navnet ditt og ordrenummeret og er kun til eget bruk.</p>' +
-    '<p style="font-size:14px;color:#6b5a4e">Ordrenummer: <b>' + ordre + '</b> · Beløp: ' + (Number(belop) || prisOre_() / 100) + ' kr (0 % mva)<br>' +
-    'Du samtykket ved kjøpet til at heftet leveres med en gang, og bekreftet at angreretten dermed faller bort (angrerettloven § 22 bokstav n).</p>' +
-    '<p>God jul og lykke til på kjøkkenet!<br>Celia</p></div></div>';
+    '<!doctype html><html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="color-scheme" content="light"><title>Takk for kjøpet</title></head>' +
+    '<body style="margin:0;padding:0;background:#f8f1e3">' +
+    // Forhåndsvisning i innboksen
+    '<div style="display:none;max-height:0;overflow:hidden;opacity:0">Heftet ditt er klart. Last det ned her, lenken virker i ' + dager + ' dager.</div>' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f1e3"><tr><td align="center" style="padding:24px 12px">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:#fffaf0;border:1px solid #e6d8bf;border-radius:14px;overflow:hidden">' +
+    // Toppstripe
+    '<tr><td style="background:#5e0f16;color:#f8f1e3;' + sans + ';font-size:12px;letter-spacing:2px;text-transform:uppercase;text-align:center;padding:9px 16px">Vegansk juleribbe · av Celia Grimsgaard</td></tr>' +
+    // Strikkebånd: rødt med gullinjer og en rad med små mønstertegn
+    '<tr><td style="background:#9e1b22;border-top:2px solid #c8a04a;border-bottom:2px solid #c8a04a;color:#c8a04a;text-align:center;font-size:13px;letter-spacing:6px;line-height:22px;padding:2px 0">✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦</td></tr>' +
+    // Overskrift
+    '<tr><td style="padding:34px 32px 6px;text-align:center">' +
+    '<div style="' + sans + ';font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#9e1b22;font-weight:bold">Ordrebekreftelse</div>' +
+    '<h1 style="margin:10px 0 0;' + serif + ';font-size:32px;line-height:1.2;color:#741218;font-weight:700">Takk for kjøpet!</h1>' +
+    '<div style="margin:14px auto 0;width:60px;border-top:2px solid #c8a04a;font-size:0;line-height:0">&nbsp;</div>' +
+    '</td></tr>' +
+    // Tekst og knapp
+    '<tr><td style="padding:18px 32px 8px;' + sans + ';font-size:17px;line-height:1.6;color:#2a1d17">' +
+    '<p style="margin:0 0 14px">Hei ' + escapeHtml_(fornavn) + '!</p>' +
+    '<p style="margin:0">Her er heftet ditt med oppskriften på vegansk juleribbe med sprø, stekt svor. Lykke til på kjøkkenet, dette blir godt.</p>' +
+    '</td></tr>' +
+    '<tr><td align="center" style="padding:26px 32px 8px">' +
+    '<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="background:#1f3d2b;border-radius:999px">' +
+    '<a href="' + link + '" style="display:inline-block;padding:15px 34px;' + sans + ';font-size:17px;font-weight:bold;color:#f8f1e3;text-decoration:none;border-radius:999px">Last ned heftet (PDF)</a>' +
+    '</td></tr></table>' +
+    '<div style="margin-top:12px;' + sans + ';font-size:14px;color:#6b5a4e">Lenken virker i ' + dager + ' dager.</div>' +
+    '</td></tr>' +
+    // Ordredetaljer
+    '<tr><td style="padding:24px 32px 6px">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f1e3;border:1px solid #e6d8bf;border-radius:10px;' + sans + ';font-size:15px;color:#2a1d17">' +
+    '<tr><td style="padding:14px 18px 6px;color:#6b5a4e">Ordrenummer</td><td align="right" style="padding:14px 18px 6px;font-weight:bold">' + ordre + '</td></tr>' +
+    '<tr><td style="padding:6px 18px;color:#6b5a4e">Produkt</td><td align="right" style="padding:6px 18px">Heftet som PDF</td></tr>' +
+    '<tr><td style="padding:6px 18px 14px;color:#6b5a4e;border-top:1px solid #e6d8bf">Betalt</td><td align="right" style="padding:6px 18px 14px;font-weight:bold;border-top:1px solid #e6d8bf">' + kr + ' kr <span style="font-weight:normal;color:#6b5a4e">(0 % mva)</span></td></tr>' +
+    '</table></td></tr>' +
+    // Tips
+    '<tr><td style="padding:18px 32px 4px;' + sans + ';font-size:15px;line-height:1.55;color:#2a1d17">' +
+    '<p style="margin:0"><b style="color:#741218">Tips:</b> Lagre heftet på telefonen eller skriv det ut, så har du det klart på kjøkkenet. Heftet er merket med navnet ditt og ordrenummeret og er kun til eget bruk.</p>' +
+    '</td></tr>' +
+    // Hilsen
+    '<tr><td style="padding:22px 32px 30px;' + sans + ';font-size:17px;line-height:1.5;color:#2a1d17">' +
+    '<p style="margin:0">God jul!</p>' +
+    '<p style="margin:4px 0 0;' + serif + ';font-size:24px;font-style:italic;color:#741218">Celia</p>' +
+    '</td></tr>' +
+    // Bunn
+    '<tr><td style="background:#9e1b22;border-top:2px solid #c8a04a;font-size:0;line-height:0;height:6px">&nbsp;</td></tr>' +
+    '<tr><td style="background:#2a1d17;color:#e6d8bf;padding:20px 32px;' + sans + ';font-size:13px;line-height:1.6;text-align:center">' +
+    'Spørsmål? Bare svar på denne e-posten' + (kontakt ? ', eller skriv til ' + escapeHtml_(kontakt) : '') + '.<br>' +
+    'Følg Celia på Instagram: @cgrimsgaard<br>' +
+    '<span style="color:#b8a690;font-size:12px">Du samtykket ved kjøpet til at heftet leveres med en gang, og bekreftet at angreretten dermed faller bort (angrerettloven § 22 bokstav n). Org.nr. 925 145 602</span>' +
+    '</td></tr>' +
+    '</table></td></tr></table></body></html>';
   MailApp.sendEmail(to, 'Heftet ditt: Vegansk juleribbe (' + ordre + ')',
     // Full tekstversjon ved siden av HTML: e-post med bare en kort tekstdel havner lettere i søppelpost
     'Hei ' + fornavn + '!\n\n' +
@@ -449,7 +497,7 @@ function sendMail_(to, navn, ordre, token, belop) {
     'Last ned heftet: ' + link + '\n\n' +
     'Lenken virker i ' + dager + ' dager. Heftet er merket med navnet ditt og ordrenummeret og er kun til eget bruk.\n\n' +
     'Ordrenummer: ' + ordre + '\n' +
-    'Beløp: ' + (Number(belop) || prisOre_() / 100) + ' kr (0 % mva)\n' +
+    'Beløp: ' + kr + ' kr (0 % mva)\n' +
     'Du samtykket ved kjøpet til at heftet leveres med en gang, og bekreftet at angreretten dermed faller bort (angrerettloven § 22 bokstav n).\n\n' +
     'Har du spørsmål, kan du svare på denne e-posten.\n\n' +
     'God jul og lykke til på kjøkkenet!\nCelia',
