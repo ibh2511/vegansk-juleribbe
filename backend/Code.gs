@@ -488,7 +488,7 @@ function sendMail_(to, navn, ordre, token, belop) {
     // Instagram: lite bilde fra nettsiden (Gmail og Outlook viser ikke SVG), med tekst ved siden av hvis bildet blokkeres
     '<a href="https://www.instagram.com/cgrimsgaard/" style="text-decoration:none;color:#f8f1e3">' +
     '<img src="' + site + '/assets/instagram-epost.png" width="40" height="40" alt="Instagram" style="display:block;margin:0 auto 8px;border:0;width:40px;height:40px"></a>' +
-    '<div style="' + serif + ';font-size:19px;color:#f8f1e3">Følg Celia på Instagram</div>' +
+    '<div style="' + serif + ';font-size:19px;color:#f8f1e3">Følg meg på Instagram</div>' +
     '<div style="margin:4px 0 14px"><a href="https://www.instagram.com/cgrimsgaard/" style="color:#c8a04a;font-weight:bold;text-decoration:none">@cgrimsgaard</a> for flere oppskrifter og julestemning</div>' +
     '<div style="border-top:1px solid #4a3a30;padding-top:14px;color:#b8a690;font-size:12px">' +
     'Heftet er merket med navnet ditt og ordrenummeret og er kun til eget bruk.<br>' +
