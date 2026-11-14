@@ -141,6 +141,11 @@ section h2{font-size:clamp(28px,5vw,40px);text-align:center;margin-bottom:12px}
 .card .ico{font-size:28px;margin-bottom:6px}
 .card h3{font-size:20px;margin-bottom:6px}
 .card p{color:var(--muted)}
+.kicker{display:block;text-align:center;font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--green);margin-bottom:8px}
+.smak .card{position:relative;padding:26px 22px 22px;box-shadow:0 1px 0 var(--line),0 10px 24px rgba(42,29,23,.05)}
+.smak .card::before{content:"";position:absolute;left:22px;right:22px;top:0;height:3px;border-radius:0 0 3px 3px;background:var(--red)}
+.ikon{display:flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:50%;background:#fbeaea;margin-bottom:14px;box-shadow:inset 0 0 0 1.5px rgba(158,27,34,.18)}
+.ikon svg{width:26px;height:26px;fill:none;stroke:var(--red);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 
 .inside{display:grid;gap:28px;align-items:center}
 .list{list-style:none}
@@ -203,6 +208,7 @@ footer a{color:var(--cream)}
 .sticky .p b{font-family:"Playfair Display",serif;font-size:24px;line-height:1;color:var(--cream)}
 .sticky .btn-vipps{flex:1;font-size:17px;padding:12px 16px;min-height:52px;box-shadow:0 4px 12px rgba(255,91,36,.3)}
 
+@media (min-width:1000px){ .smak .cards.fire{grid-template-columns:repeat(4,1fr)} }
 @media (min-width:760px){
   footer{padding-bottom:32px}
   .hero{padding:48px 0 56px}
@@ -213,6 +219,7 @@ footer a{color:var(--cream)}
   .hero .cover .ph{aspect-ratio:auto;flex:1;min-height:520px}
   .seal{width:128px;height:128px;top:-26px;right:-22px}
   .cards{grid-template-columns:repeat(3,1fr)}
+  .cards.fire{grid-template-columns:repeat(2,1fr)}
   .inside{grid-template-columns:1fr 1fr}
   .steps{grid-template-columns:repeat(3,1fr)}
   .quotes{grid-template-columns:repeat(3,1fr)}
@@ -285,15 +292,18 @@ footer a{color:var(--cream)}
 
 <div class="band green" aria-hidden="true"></div>
 
-<section class="paper">
+<section class="paper smak">
   <div class="wrap">
+    <span class="kicker">Det du savner fra julebordet</span>
     <h2>Julesmaken, uten kompromiss</h2>
-    <p class="sub">Laget for deg som savner ribba, eller som vil at alle ved bordet skal få den samme festmiddagen.</p>
-    <div class="cards">
-      <div class="card"><div class="ico">🔥</div><h3>Ekte sprø svor</h3><p>Teknikken som gir svoren knaset og bobla du kjenner fra mormors ribbe.</p></div>
-      <div class="card"><div class="ico">🌿</div><h3>Saftig og mør</h3><p>Seitan med lag på lag, smaksatt med klassiske julekrydder.</p></div>
-      <div class="card"><div class="ico">📸</div><h3>Steg for steg</h3><p>Bilder av hvert trinn, så du ser hvordan det skal se ut underveis.</p></div>
+    <p class="sub">Laget for deg som savner ribba, eller som vil at alle rundt bordet skal få den samme festmiddagen. Svoren knaser, ribba er saftig, og du slipper stress på julaften.</p>
+    <div class="cards fire">
+      <div class="card"><span class="ikon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.2 1-3.6 2.3-4.8.2 1.6.9 2.6 2 3 0-3 .2-5.6.7-8.2z"/></svg></span><h3>Ekte sprø svor</h3><p>Svorsiden snittes opp, dampkokes i ovnen og stekes sprø i panna til slutt. Heftet viser hvordan den skal se ut før du tar den av.</p></div>
+      <div class="card"><span class="ikon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 11h16"/><path d="M5 11c0 4.4 3.1 8 7 8s7-3.6 7-8"/><path d="M9 7c0-1.5 1-2 1-3.5M13 7c0-1.5 1-2 1-3.5"/></svg></span><h3>Saftig og smaksrik</h3><p>Ribba kokes i grønnsaksbuljong og marineres i olje, salt, pepper og hvitløk, før den dampkokes i ovnen med plantesmør.</p></div>
+      <div class="card"><span class="ikon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></svg></span><h3>Video til hvert steg</h3><p>Hvert steg har bilder og en lenke til video. Har du skrevet ut heftet, skanner du QR-koden med mobilen.</p></div>
+      <div class="card"><span class="ikon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9 2h6"/></svg></span><h3>Rolig julaften</h3><p>Det meste lager du lille julaften. På selve dagen marinerer du, setter ribba i ovnen og steker svoren. Middagen står på bordet kl.&nbsp;17.</p></div>
     </div>
+
   </div>
 </section>
 
@@ -303,13 +313,13 @@ footer a{color:var(--cream)}
     <div>
       <h2 style="text-align:left">Dette får du i heftet</h2>
       <ul class="list">
-        <li>Hovedoppskriften på juleribbe med stekt svor</li>
+        <li>Oppskriften på seitan-ribba, steg for steg med bilder og video</li>
         <li>Seitan på to måter: fra vanlig hvetemel eller fra glutenmel</li>
-        <li>Kokes, dampstekes i ovnen og stekes til sprø svor i panna</li>
-        <li>Fremdriftsplan, så alt er klart samtidig på julaften</li>
-        <li>Forslag til tilbehør og saus</li>
-        <li>Handleliste og tips om hvor du får tak i ingrediensene</li>
-        <li>Vanlige feil og hvordan du unngår dem</li>
+        <li>Hemmeligheten bak sprø svor, og de vanligste feilene</li>
+        <li>Tidsplan fra handling til middag kl. 17 på julaften</li>
+        <li>Tilbehør og saus: surkål, rødkål og brun saus</li>
+        <li>Spørsmål og svar, rester og oppbevaring</li>
+        <li>Handleliste til utskrift, med plass til notater</li>
       </ul>
     </div>
   </div>
@@ -354,8 +364,8 @@ footer a{color:var(--cream)}
     <h2>Spørsmål og svar</h2>
     <p class="sub">&nbsp;</p>
     <details><summary>Hvordan får jeg heftet etter kjøp?</summary><p>Rett etter betaling får du en nedlastingslenke på siden og på e-post. Lenken virker i 7 dager.</p></details>
-    <details><summary>Er det vanskelig å lage seitan?</summary><p>Nei. Heftet viser hvert steg med bilder, og du trenger ikke spesielt utstyr.</p></details>
-    <details><summary>Hvor lang tid tar det?</summary><p>[ Fyll inn aktiv tid og total tid. ] Mye kan lages dagen før.</p></details>
+    <details><summary>Er det vanskelig å lage seitan?</summary><p>Nei. Heftet viser hvert steg med bilder og video, og du trenger bare ovnsform, stekepanne og en skarp kniv.</p></details>
+    <details><summary>Hvor lang tid tar det?</summary><p>Det meste gjør du lille julaften. På julaften marinerer du ribba om formiddagen, setter den i ovnen kl.&nbsp;14 og steker svoren kl.&nbsp;16.30, så middagen er klar kl.&nbsp;17.</p></details>
     <details><summary>Hvor får jeg tak i ingrediensene?</summary><p>Du kan lage seitan fra vanlig hvetemel, som finnes i alle butikker, eller bruke glutenmel for å spare tid. Heftet viser begge deler, og handlelisten står bakerst.</p></details>
     <details><summary>Inneholder den allergener?</summary><p>Ja, seitan er laget av hvetegluten og passer ikke for deg med cøliaki eller glutenintoleranse.</p></details>
     <details><summary>Hvorfor står navnet mitt nederst på sidene?</summary><p>Hvert hefte merkes med kjøperens navn og ordrenummer. Det beskytter arbeidet bak oppskriften mot ulovlig deling.</p></details>
@@ -397,7 +407,7 @@ footer a{color:var(--cream)}
 <div class="band" aria-hidden="true"></div>
 <footer>
   <div class="wrap">
-    <p>[ Foretaksnavn ] · Org.nr. 925 145 602 · [ e-post ]</p>
+    <p>Org.nr. 925 145 602 · <a href="mailto:vegansk.julemat@gmail.com">vegansk.julemat@gmail.com</a></p>
     <p><a href="vilkar.html">Salgsvilkår</a> · <a href="personvern.html">Personvern</a></p>
     <a class="ig" href="https://www.instagram.com/cgrimsgaard/" target="_blank" rel="noopener" aria-label="Instagram: @cgrimsgaard"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r="1" fill="currentColor" stroke="none"/></svg></a>
   </div>
