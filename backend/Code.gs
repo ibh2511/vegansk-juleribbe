@@ -473,12 +473,11 @@ function sendMail_(to, navn, ordre, token, belop) {
     '<tr><td style="padding:6px 18px;color:#6b5a4e">Produkt</td><td align="right" style="padding:6px 18px">Heftet som PDF</td></tr>' +
     '<tr><td style="padding:6px 18px 14px;color:#6b5a4e;border-top:1px solid #e6d8bf">Betalt</td><td align="right" style="padding:6px 18px 14px;font-weight:bold;border-top:1px solid #e6d8bf">' + kr + ' kr</td></tr>' +
     '</table></td></tr>' +
-    // Hilsen
-    '<tr><td align="center" style="padding:30px 32px 34px;text-align:center">' +
-    '<div style="margin:0 auto 18px;width:60px;border-top:2px solid #c8a04a;font-size:0;line-height:0">&nbsp;</div>' +
-    '<p style="margin:0;' + serif + ';font-size:22px;line-height:1.35;font-style:italic;color:#741218">Med ønske om en varm og nydelig jul</p>' +
-    '<p style="margin:16px 0 0;' + sans + ';font-size:17px;color:#2a1d17">God jul fra</p>' +
-    '<p style="margin:2px 0 0;' + serif + ';font-size:28px;font-style:italic;color:#741218;line-height:1.2">Celia Grimsgaard</p>' +
+    // Hilsen: en rolig linje og signaturen, med en liten gullstjerne over
+    '<tr><td align="center" style="padding:32px 32px 36px;text-align:center">' +
+    '<div style="font-size:16px;line-height:1;color:#c8a04a">✦</div>' +
+    '<p style="margin:14px 0 0;' + sans + ';font-size:16px;line-height:1.5;color:#6b5a4e">Med ønske om en varm og nydelig jul</p>' +
+    '<p style="margin:6px 0 0;' + serif + ';font-size:30px;line-height:1.2;font-style:italic;color:#741218">God jul fra Celia</p>' +
     '</td></tr>' +
     // Bunn
     '<tr><td style="background:#9e1b22;border-top:2px solid #c8a04a;font-size:0;line-height:0;height:6px">&nbsp;</td></tr>' +
@@ -503,7 +502,7 @@ function sendMail_(to, navn, ordre, token, belop) {
     'Beløp: ' + kr + ' kr\n' +
     'Du samtykket ved kjøpet til at heftet leveres med en gang, og bekreftet at angreretten dermed faller bort (angrerettloven § 22 bokstav n).\n\n' +
     'Har du spørsmål, kan du svare på denne e-posten.\n\n' +
-    'Med ønske om en varm og nydelig jul\n\nGod jul fra\nCelia Grimsgaard',
+    'Med ønske om en varm og nydelig jul\n\nGod jul fra Celia',
     { htmlBody: html, name: cfg_('AVSENDER_NAVN', 'Vegansk juleribbe'), replyTo: cfg_('SVAR_EPOST', '') || undefined });
 }
 
