@@ -7,6 +7,7 @@
 <link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta name="theme-color" content="#5e0f16">
+<meta name="format-detection" content="telephone=no">
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
@@ -17,6 +18,13 @@
 <body>
 <div class="band" aria-hidden="true"></div>
 <main>
+  <div class="box" id="inapp" hidden style="margin-bottom:20px;border-color:var(--gold)">
+    <h2 style="font-size:22px">Åpne i nettleseren for å laste ned</h2>
+    <p id="inappTekst"></p>
+    <a class="btn" id="aapne" href="#">Åpne i nettleseren</a>
+    <p style="margin-top:14px"><button type="button" id="kopier" style="background:none;border:0;padding:0;color:var(--red);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer">Kopier lenken</button> <span id="kopiert" style="color:var(--muted)"></span></p>
+    <p style="font-size:14px;color:var(--muted)">Lenken virker like godt i Safari eller Chrome, og du bruker ikke opp noen nedlastinger ved å bytte.</p>
+  </div>
   <div class="box" id="boks">
     <h1>Heftet ditt er klart</h1>
     <p>Trykk på knappen for å laste ned PDF-en. Den er merket med navnet ditt og ordrenummeret.</p>
@@ -37,6 +45,22 @@
   var t=new URLSearchParams(location.search).get('t')||'';
   var knapp=document.getElementById('last'), info=document.getElementById('info'), ny=document.getElementById('nylenke');
   if(!t){ document.getElementById('boks').hidden=true; ny.hidden=false; }
+  // I Instagram, Facebook o.l. lagres ikke filer: be kunden åpne siden i vanlig nettleser først
+  var iv=t&&window.vjInApp&&vjInApp();
+  if(iv){
+    document.getElementById('inapp').hidden=false;
+    document.getElementById('aapne').href=vjEksternLenke(iv.ios);
+    document.getElementById('aapne').textContent=iv.ios?'Åpne i Safari':'Åpne i Chrome';
+    document.getElementById('inappTekst').innerHTML='Du er i nettleseren inne i '+iv.app+', og den kan ikke lagre filer. Trykk på knappen under. '+
+      'Virker den ikke, trykk på <b>•••</b> '+(iv.ios?'oppe eller nede til høyre':'oppe til høyre')+' og velg <b>Åpne i '+(iv.ios?'ekstern nettleser':'Chrome')+'</b> eller <b>Åpne i nettleser</b>.';
+    knapp.textContent='Prøv å laste ned her likevel'; knapp.style.background='var(--muted)';
+    document.getElementById('kopier').onclick=function(){
+      var ok=function(){ document.getElementById('kopiert').textContent='Kopiert. Lim den inn i Safari eller Chrome.'; };
+      var gammel=function(){ var f=document.createElement('textarea'); f.value=location.href; f.setAttribute('readonly',''); f.style.position='absolute'; f.style.left='-9999px';
+        document.body.appendChild(f); f.select(); f.setSelectionRange(0,f.value.length); try{ document.execCommand('copy'); ok(); }catch(e){} f.remove(); };
+      if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(location.href).then(ok,gammel); else gammel();
+    };
+  }
   knapp.onclick=function(){
     knapp.disabled=true; knapp.textContent='Lager heftet ditt …';
     vjGet({action:'download',t:t}).then(function(d){
@@ -44,6 +68,11 @@
       var bin=atob(d.pdf), arr=new Uint8Array(bin.length);
       for(var i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
       var url=URL.createObjectURL(new Blob([arr],{type:'application/pdf'}));
+      if(iv){ // Inne i apper ignoreres nedlasting: prøv å vise PDF-en direkte i stedet
+        knapp.disabled=false; knapp.textContent='Prøv igjen';
+        info.innerHTML='Kom ikke PDF-en opp? Bruk knappen <b>'+document.getElementById('aapne').textContent+'</b> over. Du har '+d.igjen+' nedlasting(er) igjen.';
+        location.href=url; return;
+      }
       var a=document.createElement('a'); a.href=url; a.download=d.filnavn; document.body.appendChild(a); a.click(); a.remove();
       knapp.disabled=false; knapp.textContent='Last ned på nytt';
       info.innerHTML='Lastet ned! Du kan laste ned '+d.igjen+' gang(er) til med denne lenken.<br>Finner du ikke filen? <a href="'+url+'" target="_blank">Åpne PDF-en her</a>.';

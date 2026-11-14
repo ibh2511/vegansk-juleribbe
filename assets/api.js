@@ -27,6 +27,21 @@
     u.ref = ref;
     return u;
   };
+  // Nettleseren inne i Instagram, Facebook, Messenger, TikTok, Snapchat o.l. Der virker ikke vanlig filnedlasting.
+  window.vjInApp = function () {
+    var ua = navigator.userAgent || '';
+    var ios = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+    var app = /Instagram/i.test(ua) ? 'Instagram' : /FBAN|FBAV|FB_IAB|FBIOS|FB4A/i.test(ua) ? 'Facebook' : /Messenger/i.test(ua) ? 'Messenger' :
+      /TikTok|musical_ly|Bytedance/i.test(ua) ? 'TikTok' : /Snapchat/i.test(ua) ? 'Snapchat' : /LinkedInApp/i.test(ua) ? 'LinkedIn' :
+      /Pinterest/i.test(ua) ? 'Pinterest' : /; wv\)/.test(ua) ? 'appen' : '';
+    return app ? { app: app, ios: ios } : null;
+  };
+  // Lenke som åpner samme side i telefonens vanlige nettleser (Safari på iPhone fra iOS 17, Chrome på Android)
+  window.vjEksternLenke = function (ios) {
+    if (ios) return 'x-safari-' + location.href;
+    return 'intent://' + location.host + location.pathname + location.search + location.hash +
+      '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(location.href) + ';end';
+  };
   window.vjHit = function () {
     if (!window.VJ_API || /^(localhost|127\.)/.test(location.hostname) || location.protocol === 'file:') return;
     var v = '';
