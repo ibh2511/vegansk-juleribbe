@@ -146,17 +146,6 @@ section h2{font-size:clamp(28px,5vw,40px);text-align:center;margin-bottom:12px}
 .smak .card::before{content:"";position:absolute;left:22px;right:22px;top:0;height:3px;border-radius:0 0 3px 3px;background:var(--red)}
 .ikon{display:flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:50%;background:#fbeaea;margin-bottom:14px;box-shadow:inset 0 0 0 1.5px rgba(158,27,34,.18)}
 .ikon svg{width:26px;height:26px;fill:none;stroke:var(--red);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.tidslinje{margin-top:40px;background:var(--green);color:var(--cream);border-radius:20px;padding:28px 22px;position:relative;overflow:hidden}
-.tidslinje::after{content:"";position:absolute;inset:auto 0 0 0;height:6px;background:repeating-linear-gradient(90deg,var(--gold) 0 10px,transparent 10px 18px);opacity:.6}
-.tidslinje h3{color:var(--cream);font-size:24px;margin-bottom:18px;text-align:center}
-.tidslinje ol{list-style:none;display:grid;gap:14px;position:relative}
-.tidslinje li{position:relative;padding-left:30px}
-.tidslinje li::before{content:"";position:absolute;left:4px;top:7px;width:12px;height:12px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px rgba(200,160,74,.25)}
-.tidslinje li:not(:last-child)::after{content:"";position:absolute;left:9px;top:22px;bottom:-14px;width:2px;background:rgba(248,241,227,.25)}
-.tidslinje li b{display:block;font-family:"Playfair Display",Georgia,serif;font-size:19px;color:#f3dca9}
-.tidslinje li span{color:#d8e3d9;font-size:16px}
-.tidslinje li.maal::before{background:var(--red);box-shadow:0 0 0 4px rgba(248,241,227,.35)}
-.tidslinje li.maal b{color:#fff}
 
 .inside{display:grid;gap:28px;align-items:center}
 .list{list-style:none}
@@ -231,11 +220,6 @@ footer a{color:var(--cream)}
   .seal{width:128px;height:128px;top:-26px;right:-22px}
   .cards{grid-template-columns:repeat(3,1fr)}
   .cards.fire{grid-template-columns:repeat(2,1fr)}
-  .tidslinje{padding:32px 36px 36px}
-  .tidslinje ol{grid-template-columns:repeat(5,1fr);gap:16px}
-  .tidslinje li{padding:26px 0 0}
-  .tidslinje li::before{left:0;top:0}
-  .tidslinje li:not(:last-child)::after{left:16px;right:-8px;top:5px;bottom:auto;width:auto;height:2px}
   .inside{grid-template-columns:1fr 1fr}
   .steps{grid-template-columns:repeat(3,1fr)}
   .quotes{grid-template-columns:repeat(3,1fr)}
@@ -320,16 +304,6 @@ footer a{color:var(--cream)}
       <div class="card"><span class="ikon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9 2h6"/></svg></span><h3>Rolig julaften</h3><p>Det meste lager du lille julaften. På selve dagen marinerer du, setter ribba i ovnen og steker svoren. Middagen står på bordet kl.&nbsp;17.</p></div>
     </div>
 
-    <div class="tidslinje" aria-label="Slik ser julaften ut med heftet">
-      <h3>Julaften med heftet</h3>
-      <ol>
-        <li><b>Lille julaften</b><span>Ribba lages, kokes i buljong og står i kjøleskapet over natten.</span></li>
-        <li><b>kl. 10.00</b><span>Mariner ribba i olje, salt, pepper og hvitløk.</span></li>
-        <li><b>kl. 14.00</b><span>Snitt opp svoren og dampkok ribba i ovnen.</span></li>
-        <li><b>kl. 16.30</b><span>Stek svoren sprø i panna.</span></li>
-        <li class="maal"><b>kl. 17.00</b><span>Middag! God jul.</span></li>
-      </ol>
-    </div>
   </div>
 </section>
 
