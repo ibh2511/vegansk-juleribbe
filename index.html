@@ -8,7 +8,10 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta name="theme-color" content="#5e0f16">
 <title>Vegansk juleribbe med sprø svor – oppskrift steg for steg</title>
-<meta name="description" content="Vegansk ribbe av seitan med ekte sprø svor. Oppskriftshefte med bilder, fremdriftsplan og handleliste. 149 kr med Vipps. Lanseringspris 99 kr fra 26. november til og med 2. desember.">
+<meta name="description" content="Oppskriftshefte på vegansk juleribbe av seitan med ekte sprø svor. Steg for steg med bilder og video, fremdriftsplan og handleliste. Last ned som PDF, betal med Vipps.">
+<meta name="author" content="Celia Grimsgaard">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="format-detection" content="telephone=no">
 <!-- Bytt til https://veganskjuleribbe.no/ her, i JSON-LD under, i robots.txt og i sitemap.xml når domenet er koblet til -->
 <link rel="canonical" href="https://ibh2511.github.io/vegansk-juleribbe/">
 <meta property="og:type" content="website">
@@ -16,9 +19,18 @@
 <meta property="og:site_name" content="Vegansk juleribbe">
 <meta property="og:url" content="https://ibh2511.github.io/vegansk-juleribbe/">
 <meta property="og:title" content="Vegansk juleribbe med sprø svor">
-<meta property="og:description" content="Hele oppskriften steg for steg, med bilder. Lanseringspris 99 kr fra 26. november til og med 2. desember.">
-<!-- Legg til når bildet finnes (1200×630): <meta property="og:image" content="https://ibh2511.github.io/vegansk-juleribbe/assets/og-bilde.jpg"> -->
+<meta property="og:description" content="Hele oppskriften steg for steg, med bilder og video. Et oppskriftshefte av Celia Grimsgaard. Last ned som PDF, betal med Vipps.">
+<meta property="og:image" content="https://ibh2511.github.io/vegansk-juleribbe/assets/og-bilde.jpg">
+<meta property="og:image:secure_url" content="https://ibh2511.github.io/vegansk-juleribbe/assets/og-bilde.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Vegansk juleribbe med sprø svor, oppskriftshefte av Celia Grimsgaard">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Vegansk juleribbe med sprø svor">
+<meta name="twitter:description" content="Hele oppskriften steg for steg, med bilder og video. Last ned som PDF, betal med Vipps.">
+<meta name="twitter:image" content="https://ibh2511.github.io/vegansk-juleribbe/assets/og-bilde.jpg">
+<meta name="twitter:image:alt" content="Vegansk juleribbe med sprø svor, oppskriftshefte av Celia Grimsgaard">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -35,6 +47,8 @@
       "name": "Vegansk juleribbe med sprø, stekt svor – oppskriftshefte (PDF)",
       "description": "Oppskriftshefte på vegansk juleribbe av hjemmelaget seitan, med sprø svor. Steg for steg med bilder, fremdriftsplan, tilbehør, saus og handleliste.",
       "category": "Oppskriftshefte",
+      "image": "https://ibh2511.github.io/vegansk-juleribbe/assets/og-bilde.jpg",
+      "inLanguage": "nb-NO",
       "brand": { "@type": "Brand", "name": "Vegansk juleribbe" },
       "author": { "@id": "https://ibh2511.github.io/vegansk-juleribbe/#celia" },
       "offers": {
@@ -438,7 +452,7 @@ if (typeof window.vjHit !== 'function') {
 }
 vjHit();
 document.querySelectorAll('button.buy').forEach(function(b){
-  var tekst=b.innerHTML;
+  var tekst=b.innerHTML; b.dataset.tekst=tekst;
   b.addEventListener('click', function(){
     if(!window.VJ_API){ b.textContent='Salget åpner snart'; return; }
     b.disabled=true; b.textContent='Åpner Vipps …';
@@ -447,6 +461,10 @@ document.querySelectorAll('button.buy').forEach(function(b){
       .then(function(d){ if(!d.ok||!d.redirectUrl) throw new Error(d.error); location.href=d.redirectUrl; })
       .catch(function(){ b.disabled=false; b.innerHTML=tekst; alertBox(); });
   });
+});
+// Går kunden tilbake fra Vipps, henter mobilen ofte siden fra minnet med knappen fortsatt låst. Lås den opp igjen.
+window.addEventListener('pageshow', function(e){
+  document.querySelectorAll('button.buy').forEach(function(b){ if(b.disabled && b.dataset.tekst){ b.disabled=false; b.innerHTML=b.dataset.tekst; } });
 });
 function alertBox(){
   var m=document.getElementById('kjopfeil'); if(m){ m.hidden=false; return; }
