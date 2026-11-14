@@ -30,7 +30,7 @@ Ingen hemmeligheter ligger i dette repoet. Vipps-nøkler og adminpassord ligger 
 
 ## 3. Last opp heftet
 
-1. Lag den endelige PDF-en med **tomt vannmerkefelt** nederst.
+1. Bruk **`hefte-master.pdf`** (tomt vannmerkefelt nederst). Ikke bruk `hefte-mal.pdf`, som er forhåndsvisningen med eksempelnavnet «Kari Nordmann».
 2. Last den opp til Google Disk i den nye kontoen. Ikke del filen med noen.
 3. Åpne filen. ID-en er delen av adressen mellom `/d/` og `/view`. Den trenger du i steg 4.
 
@@ -52,7 +52,7 @@ Ingen hemmeligheter ligger i dette repoet. Vipps-nøkler og adminpassord ligger 
 | `SITE_URL` | `https://ibh2511.github.io/vegansk-juleribbe` |
 | `AVSENDER_NAVN` | `Vegansk juleribbe` |
 | `SVAR_EPOST` | e-posten kundene kan svare til |
-| `MORKE_SIDER` | `1,4,11` (sider med mørk bunn, der vannmerket skal være lyst) |
+| `MORKE_SIDER` | `1,4,12` (sider med mørk bunn, der vannmerket skal være lyst) |
 | `LENKE_DAGER` | `7` |
 | `MAKS_NEDLASTINGER` | `5` |
 | `PRIS` | valgfri, ordinær pris i kroner (standard `149`) |

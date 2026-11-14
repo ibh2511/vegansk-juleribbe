@@ -331,8 +331,9 @@ async function forberedMaster() {
   if (typeof PDFLib === 'undefined') eval(UrlFetchApp.fetch(PDF_LIB_URL).getContentText());
 
   var src = DriveApp.getFileById(cfg_('MASTER_PDF_ID'));
-  var morke = cfg_('MORKE_SIDER', '1,4,11').split(',').map(function (x) { return Number(x.trim()) - 1; });
-  var doc = await PDFLib.PDFDocument.load(new Uint8Array(src.getBlob().getBytes()));
+  var morke = cfg_('MORKE_SIDER', '1,4,12').split(',').map(function (x) { return Number(x.trim()) - 1; });
+  // updateMetadata:false beholder heftets egen tittel, forfatter og datoer
+  var doc = await PDFLib.PDFDocument.load(new Uint8Array(src.getBlob().getBytes()), { updateMetadata: false });
   var font = await doc.embedFont(PDFLib.StandardFonts.Helvetica);
   var ctx = doc.context;
   var qRef = ctx.register(ctx.stream('q\n'));
@@ -361,7 +362,8 @@ async function forberedMaster() {
   props.setProperty('MASTER_FORBEREDT_ID', f.getId());
   props.setProperty('MASTER_META', JSON.stringify({
     lys: lysRef.objectNumber, mork: morkRef.objectNumber, root: ctx.trailerInfo.Root.toString(),
-    size: ctx.largestObjectNumber + 1, startxref: startxref
+    size: ctx.largestObjectNumber + 1, startxref: startxref,
+    tittel: doc.getTitle() || 'Vegansk juleribbe', forfatter: doc.getAuthor() || '', laget: doc.getCreator() || ''
   }));
   console.log('Heftet er forberedt: ' + doc.getPageCount() + ' sider. Kjør testVannmerke() for å sjekke.');
 }
@@ -382,7 +384,11 @@ function stampPdf_(o) {
   legg(meta.lys, '\n' + meta.lys + ' 0 obj\n' + felt('0.478 0.392 0.333') + 'endobj\n');   // #7A6455
   legg(meta.mork, meta.mork + ' 0 obj\n' + felt('0.914 0.851 0.753') + 'endobj\n');        // #E9D9C0
   var info = meta.size;
-  legg(info, info + ' 0 obj\n<< /Title (Vegansk juleribbe) /Subject ' + pdfStr_('Ordre ' + o.ordre) +
+  // Beholder heftets tittel og forfatter. Emne og nøkkelord brukes til ordrenummeret.
+  legg(info, info + ' 0 obj\n<< /Title ' + pdfStr_(meta.tittel || 'Vegansk juleribbe') +
+    (meta.forfatter ? ' /Author ' + pdfStr_(meta.forfatter) : '') +
+    (meta.laget ? ' /Creator ' + pdfStr_(meta.laget) : '') +
+    ' /Subject ' + pdfStr_('Ordre ' + o.ordre) +
     ' /Keywords ' + pdfStr_(o.ordre + ', ' + o.epost) + ' /Producer (Vegansk juleribbe) >>\nendobj\n');
   var xref = 'xref\n0 1\n0000000000 65535 f \n';
   Object.keys(pos).map(Number).sort(function (a, b) { return a - b; }).forEach(function (n) {
