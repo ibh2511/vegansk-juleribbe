@@ -432,7 +432,7 @@ function sendMail_(to, navn, ordre, token, belop) {
   var fornavn = String(navn || '').split(' ')[0] || 'du';
   var dager = cfg_('LENKE_DAGER', '7');
   var kr = Number(belop) || prisOre_() / 100;
-  var kontakt = cfg_('SVAR_EPOST', '');
+  var site = cfg_('SITE_URL').replace(/\/$/, '');
   // Samme farger og uttrykk som nettsiden: kremfarget papir, rødt strikkebånd med gull, grønn knapp.
   // Tabeller og innebygd stil fordi e-postprogrammer (Gmail, Outlook) ikke støtter vanlig CSS. Ingen bilder.
   var serif = "font-family:'Playfair Display',Georgia,'Times New Roman',serif";
@@ -471,11 +471,11 @@ function sendMail_(to, navn, ordre, token, belop) {
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f1e3;border:1px solid #e6d8bf;border-radius:10px;' + sans + ';font-size:15px;color:#2a1d17">' +
     '<tr><td style="padding:14px 18px 6px;color:#6b5a4e">Ordrenummer</td><td align="right" style="padding:14px 18px 6px;font-weight:bold">' + ordre + '</td></tr>' +
     '<tr><td style="padding:6px 18px;color:#6b5a4e">Produkt</td><td align="right" style="padding:6px 18px">Heftet som PDF</td></tr>' +
-    '<tr><td style="padding:6px 18px 14px;color:#6b5a4e;border-top:1px solid #e6d8bf">Betalt</td><td align="right" style="padding:6px 18px 14px;font-weight:bold;border-top:1px solid #e6d8bf">' + kr + ' kr <span style="font-weight:normal;color:#6b5a4e">(0 % mva)</span></td></tr>' +
+    '<tr><td style="padding:6px 18px 14px;color:#6b5a4e;border-top:1px solid #e6d8bf">Betalt</td><td align="right" style="padding:6px 18px 14px;font-weight:bold;border-top:1px solid #e6d8bf">' + kr + ' kr</td></tr>' +
     '</table></td></tr>' +
     // Tips
     '<tr><td style="padding:18px 32px 4px;' + sans + ';font-size:15px;line-height:1.55;color:#2a1d17">' +
-    '<p style="margin:0"><b style="color:#741218">Tips:</b> Lagre heftet på telefonen eller skriv det ut, så har du det klart på kjøkkenet. Heftet er merket med navnet ditt og ordrenummeret og er kun til eget bruk.</p>' +
+    '<p style="margin:0"><b style="color:#741218">Tips:</b> Lagre heftet på telefonen eller skriv det ut, så har du det klart på kjøkkenet.</p>' +
     '</td></tr>' +
     // Hilsen
     '<tr><td style="padding:22px 32px 30px;' + sans + ';font-size:17px;line-height:1.5;color:#2a1d17">' +
@@ -485,9 +485,14 @@ function sendMail_(to, navn, ordre, token, belop) {
     // Bunn
     '<tr><td style="background:#9e1b22;border-top:2px solid #c8a04a;font-size:0;line-height:0;height:6px">&nbsp;</td></tr>' +
     '<tr><td style="background:#2a1d17;color:#e6d8bf;padding:20px 32px;' + sans + ';font-size:13px;line-height:1.6;text-align:center">' +
-    'Spørsmål? Bare svar på denne e-posten' + (kontakt ? ', eller skriv til ' + escapeHtml_(kontakt) : '') + '.<br>' +
-    'Følg Celia på Instagram: @cgrimsgaard<br>' +
-    '<span style="color:#b8a690;font-size:12px">Du samtykket ved kjøpet til at heftet leveres med en gang, og bekreftet at angreretten dermed faller bort (angrerettloven § 22 bokstav n). Org.nr. 925 145 602</span>' +
+    // Instagram: lite bilde fra nettsiden (Gmail og Outlook viser ikke SVG), med tekst ved siden av hvis bildet blokkeres
+    '<a href="https://www.instagram.com/cgrimsgaard/" style="text-decoration:none;color:#f8f1e3">' +
+    '<img src="' + site + '/assets/instagram-epost.png" width="40" height="40" alt="Instagram" style="display:block;margin:0 auto 8px;border:0;width:40px;height:40px"></a>' +
+    '<div style="' + serif + ';font-size:19px;color:#f8f1e3">Følg Celia på Instagram</div>' +
+    '<div style="margin:4px 0 14px"><a href="https://www.instagram.com/cgrimsgaard/" style="color:#c8a04a;font-weight:bold;text-decoration:none">@cgrimsgaard</a> for flere oppskrifter og julestemning</div>' +
+    '<div style="border-top:1px solid #4a3a30;padding-top:14px;color:#b8a690;font-size:12px">' +
+    'Heftet er merket med navnet ditt og ordrenummeret og er kun til eget bruk.<br>' +
+    'Spørsmål? Bare svar på denne e-posten.</div>' +
     '</td></tr>' +
     '</table></td></tr></table></body></html>';
   MailApp.sendEmail(to, 'Heftet ditt: Vegansk juleribbe (' + ordre + ')',
@@ -497,7 +502,7 @@ function sendMail_(to, navn, ordre, token, belop) {
     'Last ned heftet: ' + link + '\n\n' +
     'Lenken virker i ' + dager + ' dager. Heftet er merket med navnet ditt og ordrenummeret og er kun til eget bruk.\n\n' +
     'Ordrenummer: ' + ordre + '\n' +
-    'Beløp: ' + kr + ' kr (0 % mva)\n' +
+    'Beløp: ' + kr + ' kr\n' +
     'Du samtykket ved kjøpet til at heftet leveres med en gang, og bekreftet at angreretten dermed faller bort (angrerettloven § 22 bokstav n).\n\n' +
     'Har du spørsmål, kan du svare på denne e-posten.\n\n' +
     'God jul og lykke til på kjøkkenet!\nCelia',
