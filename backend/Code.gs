@@ -262,7 +262,8 @@ function createPayment_(p) {
     paymentMethod: { type: 'WALLET' },
     reference: ordre,
     userFlow: 'WEB_REDIRECT',
-    returnUrl: site + '/takk.html?ordre=' + encodeURIComponent(ordre) + '&k=' + row.nokkel,
+    // retur=vipps: kunden kommer fra Vipps etter å ha betalt, så takkesiden skriver «Sjekker betalingen …»
+    returnUrl: site + '/takk.html?ordre=' + encodeURIComponent(ordre) + '&k=' + row.nokkel + '&retur=vipps',
     paymentDescription: 'Vegansk juleribbe – oppskriftshefte (PDF)',
     profile: { scope: 'name phoneNumber email' }
   }, 'create-' + ordre);
@@ -470,7 +471,45 @@ function finnOrdreForBetaling_(t, ventende) {
     if (Object.keys(eposter).length === 1) return navn[navn.length - 1];
     return 'FLERE';
   }
+  // Reserve: kunden brukte et annet navn enn i Vipps (kallenavn, nytt etternavn). Venter bare én ordre på dette
+  // beløpet, og minst ett av navnene står i bankteksten, er det nesten sikkert den.
+  if (kand.length === 1 && (delvisNavnTreff_(kand[0].data.vipps_navn || kand[0].data.navn, t.tekst) || delvisNavnTreff_(kand[0].data.navn, t.tekst))) {
+    return kand[0];
+  }
   return null;
+}
+
+/** Minst ett av navnene (tre bokstaver eller mer) står i bankteksten. */
+function delvisNavnTreff_(navn, tekst) {
+  var t = ' ' + navnOrd_(tekst).join(' ') + ' ';
+  return navnOrd_(navn).some(function (w) { return w.length >= 3 && t.indexOf(' ' + w + ' ') >= 0; });
+}
+
+/**
+ * Betaling med et annet beløp enn heftet: hvilken ventende kunde den trolig kommer fra, på ordrenummer eller navn.
+ * Brukes bare som forslag i adminpanelet. Gir null hvis den ikke ligner på noen som venter.
+ */
+function kundeForBetaling_(t, ventende) {
+  var tz = Session.getScriptTimeZone();
+  var kand = ventende.filter(function (o) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(t.dato)) return true;
+    return t.dato >= Utilities.formatDate(new Date(new Date(o.data.opprettet).getTime() - 864e5), tz, 'yyyy-MM-dd');
+  });
+  var m = t.tekst.match(/VJ[\s-]?(\d{5,})/i);
+  if (m) {
+    var nr = kand.filter(function (o) { return o.data.ordre === 'VJ-' + m[1]; });
+    if (nr.length) return nr[0];
+  }
+  var navn = kand.filter(function (o) {
+    return navnTreff_(o.data.vipps_navn || o.data.navn, t.tekst) || navnTreff_(o.data.navn, t.tekst);
+  });
+  return navn.length ? navn[navn.length - 1] : null;
+}
+
+/** 14.9 → «14,90 kr», 149 → «149 kr». */
+function kroner_(kr) {
+  var n = Number(kr) || 0;
+  return (n % 1 ? n.toFixed(2).replace('.', ',') : String(n)) + ' kr';
 }
 
 /** Ordren er betalt: lager nedlastingslenke og sender kvitteringen. bankId er transaksjonen, eller tom ved manuell kobling. */
@@ -655,6 +694,8 @@ function sjekkBankHvisLenge_(sek) {
 /**
  * Henter innbetalinger fra de siste tre dagene og kobler dem til ventende ordre.
  * Bare innbetalinger med samme beløp som heftet lagres (fanen «Bank»), så private vippsinger blir ikke liggende.
+ * Unntak: har en kunde som venter skrevet feil beløp (navnet eller ordrenummeret står i bankteksten), lagres den
+ * som «FEIL_BELOP» med ordren som forslag, og du får en e-post. Den kobles aldri automatisk.
  */
 function sjekkBank_() {
   if (!bankKlar_()) return { ok: false, error: 'Banken er ikke koblet til' };
@@ -665,8 +706,11 @@ function sjekkBank_() {
     PropertiesService.getScriptProperties().setProperty('BANK_SIST_SJEKKET', new Date().toISOString());
 
     var bsh = sheet_(BANK_ARK), B = {}; BANK_KOLONNER.forEach(function (k, i) { B[k] = i; });
-    var sett = {};
-    bsh.getDataRange().getValues().slice(1).forEach(function (r) { sett[String(r[B.bank_id])] = 1; });
+    var sett = {}, feilSett = {};
+    bsh.getDataRange().getValues().slice(1).forEach(function (r) {
+      sett[String(r[B.bank_id])] = 1;
+      if (r[B.status] === 'FEIL_BELOP') feilSett[r[B.ordre] + '|' + ore_(r[B.belop])] = 1;
+    });
 
     var vals = sheet_(ORDRE_ARK).getDataRange().getValues(), O = {}; ORDRE_KOLONNER.forEach(function (k, i) { O[k] = i; });
     var grense = Date.now() - PRIVAT_TIMER * 36e5, nylig = Date.now() - 4 * 864e5;
@@ -683,9 +727,30 @@ function sjekkBank_() {
     ventende.forEach(function (o) { priser[ore_(o.data.belop)] = 1; });
 
     var nye = 0, koblet = 0;
+    var lagre = function (t, status, ordre) {
+      bsh.appendRow([new Date(), t.id, t.dato, t.belop, t.navn, [t.navn, t.beskrivelse].filter(String).join(' · ').slice(0, 300),
+        t.type, t.bokforing, status, ordre].map(celle_));
+      sett[t.id] = 1; nye++;
+    };
     trans.forEach(function (t) {
-      if (!(t.belop > 0) || sett[t.id] || !priser[ore_(t.belop)]) return;
-      var treff = finnOrdreForBetaling_(t, ventende), status = 'UMATCHET', ordre = '';
+      if (!(t.belop > 0) || sett[t.id]) return;
+      if (!priser[ore_(t.belop)]) {
+        var kunde = kundeForBetaling_(t, ventende);
+        if (!kunde) return; // en vanlig vipps som ikke gjelder heftet
+        var nokkel = kunde.data.ordre + '|' + ore_(t.belop);
+        if (feilSett[nokkel]) { lagre(t, 'DUPLIKAT', kunde.data.ordre); return; } // samme betaling igjen (reservert, så bokført)
+        feilSett[nokkel] = 1;
+        lagre(t, 'FEIL_BELOP', kunde.data.ordre);
+        varsle_('Betaling med feil beløp (' + kroner_(t.belop) + ')',
+          'Det har kommet ' + kroner_(t.belop) + ' fra ' + (t.navn || 'en kunde') + (t.dato ? ' (' + t.dato + ')' : '') + '. ' +
+          'Den ser ut til å høre til ordre ' + kunde.data.ordre + ' fra ' + (kunde.data.vipps_navn || kunde.data.navn) +
+          ', som koster ' + kroner_(kunde.data.belop) + '.\n\n' +
+          'Betalinger med feil beløp kobles ikke automatisk, så kunden har ikke fått heftet ennå. ' +
+          'I adminpanelet, under «Innbetalinger som ikke ble koblet», kan du trykke «Koble» for å sende heftet, eller «Ignorer». ' +
+          'Kunden har e-post ' + kunde.data.epost + ' hvis du vil be om resten av beløpet.');
+        return;
+      }
+      var treff = finnOrdreForBetaling_(t, ventende), status = 'UMATCHET', ordre = '', kandidater = ventende.slice();
       if (treff && treff !== 'FLERE') {
         markerPrivatBetalt_(treff, t.id);
         ventende.splice(ventende.indexOf(treff), 1);
@@ -698,9 +763,17 @@ function sjekkBank_() {
       })) {
         status = 'DUPLIKAT';
       }
-      bsh.appendRow([new Date(), t.id, t.dato, t.belop, t.navn, [t.navn, t.beskrivelse].filter(String).join(' · ').slice(0, 300),
-        t.type, t.bokforing, status, ordre].map(celle_));
-      sett[t.id] = 1; nye++;
+      lagre(t, status, ordre);
+      if (status === 'UMATCHET') {
+        var samme = kandidater.filter(function (o) { return ore_(o.data.belop) === ore_(t.belop); });
+        varsle_('Betaling som ikke ble koblet (' + kroner_(t.belop) + ')',
+          'Det har kommet ' + kroner_(t.belop) + ' fra ' + (t.navn || 'ukjent') + (t.dato ? ' (' + t.dato + ')' : '') + ', ' +
+          (treff === 'FLERE' ? 'men flere ventende ordre har samme navn og beløp.' : 'men navnet passer ikke med noen ventende ordre.') + '\n\n' +
+          (samme.length ? 'Ordre som venter på ' + kroner_(t.belop) + ':\n' + samme.map(function (o) {
+            return '· ' + o.data.ordre + ': ' + (o.data.vipps_navn || o.data.navn) + ' (' + o.data.epost + ')';
+          }).join('\n') + '\n\n' : 'Ingen ordre venter på dette beløpet.\n\n') +
+          'I adminpanelet, under «Innbetalinger som ikke ble koblet», velger du ordren og trykker «Koble», så får kunden heftet. Gjelder den ikke heftet, trykker du «Ignorer».');
+      }
     });
     return { ok: true, transaksjoner: trans.length, nye: nye, koblet: koblet };
   } finally { lock.releaseLock(); }
@@ -1378,10 +1451,10 @@ function adminStats_(okt, antallDager) {
   });
   var Bk = {}; BANK_KOLONNER.forEach(function (k, i) { Bk[k] = i; });
   var umatchede = sheet_(BANK_ARK).getDataRange().getValues().slice(1).filter(function (r) {
-    return r[Bk.status] === 'UMATCHET' || r[Bk.status] === 'DUPLIKAT';
+    return r[Bk.status] === 'UMATCHET' || r[Bk.status] === 'DUPLIKAT' || r[Bk.status] === 'FEIL_BELOP';
   }).slice(-30).reverse().map(function (r) {
     return { bankId: String(r[Bk.bank_id]), dato: r[Bk.dato] instanceof Date ? dag(r[Bk.dato]) : String(r[Bk.dato]), belop: r[Bk.belop],
-      navn: r[Bk.navn], tekst: r[Bk.tekst], status: r[Bk.status] };
+      navn: r[Bk.navn], tekst: r[Bk.tekst], status: r[Bk.status], forslag: String(r[Bk.ordre] || '') };
   });
 
   return { ok: true, periode: n, statsFra: statsFra, totalt: tot, dager: dager, kilder: liste, knapper: knapper, enheter: enheter, siste: siste,

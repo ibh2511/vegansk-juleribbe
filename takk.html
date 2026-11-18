@@ -64,6 +64,8 @@
   var q=new URLSearchParams(location.search), ordre=q.get('ordre')||'', k=q.get('k')||'';
   var forsok=0, feilPaRad=0, privat=null, startet=Date.now(), timer=null;
   function vis(html){ boks.innerHTML=html; }
+  // Vipps bedrift: kunden har betalt inne i Vipps og kommer tilbake hit. Vipps privat: kunden har ikke betalt ennå.
+  if(q.get('retur')==='vipps'){ var h=boks.querySelector('h1'); if(h) h.textContent='Sjekker betalingen …'; }
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 
   function visBetalt(d){

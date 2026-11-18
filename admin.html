@@ -131,7 +131,7 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
       <p class="hint">Ordre der betalingen ikke er funnet ennå. Ser du betalingen i nettbanken, trykker du «Marker som betalt», så får kunden heftet.</p>
       <div class="tabell"><table id="ventende" class="venstre"></table></div>
       <h3>Innbetalinger som ikke ble koblet</h3>
-      <p class="hint">Velg ordren betalingen hører til og trykk «Koble». Gjelder den ikke heftet, trykker du «Ignorer».</p>
+      <p class="hint">Velg ordren betalingen hører til og trykk «Koble». Gjelder den ikke heftet, trykker du «Ignorer». Har en kunde betalt feil beløp, er ordren vi tror den hører til, valgt på forhånd. «Koble» sender heftet uansett beløp.</p>
       <div class="tabell"><table id="umatchede" class="venstre"></table></div>
       <p class="testsvar" id="venteSvar" hidden></p>
     </div>
@@ -302,10 +302,15 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
       }).join(''):'<tr><td colspan="6" class="tom">Ingen venter på betaling.</td></tr>')+'</tbody>';
     $('umatchede').innerHTML='<thead><tr><th>Dato</th><th>Beløp</th><th>Fra / tekst</th><th>Status</th><th>Ordre</th><th></th></tr></thead><tbody>'+
       (um.length?um.map(function(b){
-        var valg=vent.filter(function(o){ return Number(o.belop)===Number(b.belop); });
+        // Feil beløp: vis alle ventende ordre, med forslaget valgt. Ellers bare ordre med samme beløp.
+        var feilBelop=b.status==='FEIL_BELOP', forslag=b.forslag||'';
+        var valg=vent.filter(function(o){ return feilBelop||o.ordre===forslag||Number(o.belop)===Number(b.belop); });
+        var fOrdre=vent.filter(function(o){ return o.ordre===forslag; })[0];
+        var statusTekst=feilBelop?'<span class="chip advarsel">Feil beløp</span>'+(fOrdre?'<div class="hint">Ordren koster '+esc(fOrdre.belop)+' kr</div>':'')
+          :b.status==='DUPLIKAT'?'<span class="chip advarsel">Mulig dobbel betaling</span>':'Ikke koblet';
         return '<tr><td>'+esc(b.dato)+'</td><td>'+esc(b.belop)+' kr</td><td style="white-space:normal;min-width:180px">'+esc(b.tekst||b.navn)+'</td>'+
-          '<td>'+(b.status==='DUPLIKAT'?'<span class="chip advarsel">Mulig dobbel betaling</span>':'Ikke koblet')+'</td>'+
-          '<td><select data-velg="'+esc(b.bankId)+'"><option value="">Velg ordre</option>'+valg.map(function(o){ return '<option value="'+esc(o.ordre)+'">'+esc(o.ordre+' · '+(o.vippsNavn||o.navn))+'</option>'; }).join('')+'</select></td>'+
+          '<td>'+statusTekst+'</td>'+
+          '<td><select data-velg="'+esc(b.bankId)+'"><option value="">Velg ordre</option>'+valg.map(function(o){ return '<option value="'+esc(o.ordre)+'"'+(o.ordre===forslag?' selected':'')+'>'+esc(o.ordre+' · '+(o.vippsNavn||o.navn)+(feilBelop?' · '+o.belop+' kr':''))+'</option>'; }).join('')+'</select></td>'+
           '<td><button class="btn" type="button" data-koble="'+esc(b.bankId)+'">Koble</button> <button class="lenke" type="button" data-ignorer="'+esc(b.bankId)+'">Ignorer</button></td></tr>';
       }).join(''):'<tr><td colspan="6" class="tom">Ingen innbetalinger venter på kobling.</td></tr>')+'</tbody>';
     if(!innstillingerRort) fyllInnstillinger(inn);
