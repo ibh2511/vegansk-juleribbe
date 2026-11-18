@@ -334,7 +334,7 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
     document.querySelectorAll('input[name=betaling]').forEach(function(r){ r.checked=r.value===inn.betaling; });
     visFelter();
     $('iNr').value=inn.nr||''; $('iUtfylt').checked=inn.utfylt!==false;
-    // Gebyret er satsen fra Vipps-avtalen og står fast i koden. Endres den, legger du GEBYR_PROSENT og GEBYR_KR i Skriptegenskaper.
+    // Gebyret er satsen fra Vipps-avtalen og står fast i backend-koden (GEBYR_PROSENT og GEBYR_KR i Code.gs).
     $('gebyrSats').textContent='Vipps tar '+String(inn.gebyrProsent||'0').replace('.',',')+' % + '+String(inn.gebyrKr||'0').replace('.',',')+' kr per salg, etter avtalen din. Gebyret lagres på hvert salg og trekkes fra i salgsoversikten.';
     $('bedriftStatus').className=inn.bedriftKlar?'ok':'mangler';
     $('bedriftStatus').textContent=inn.bedriftKlar?('Nøklene er lagt inn'+(inn.vippsEnv==='prod'?'':' (testmiljø)')):'Mangler Vipps-nøkler i Skriptegenskaper';
