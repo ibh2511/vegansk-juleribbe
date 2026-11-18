@@ -436,7 +436,7 @@ dialog.skjema::backdrop{background:rgba(42,29,23,.55)}
 <div class="band" aria-hidden="true"></div>
 <footer>
   <div class="wrap">
-    <p>Org.nr. 925 145 602 · <a href="mailto:vegansk.julemat@gmail.com">vegansk.julemat@gmail.com</a></p>
+    <p>Isabelle Haugan (enkeltpersonforetak) · Org.nr.&nbsp;925&nbsp;145&nbsp;602<br>Ensjøveien 29&nbsp;C, 0661&nbsp;Oslo · <a href="mailto:vegansk.julemat@gmail.com">vegansk.julemat@gmail.com</a></p>
     <p><a href="vilkar.html">Salgsvilkår</a> · <a href="personvern.html">Personvern</a></p>
     <a class="ig" href="https://www.instagram.com/cgrimsgaard/" target="_blank" rel="noopener" aria-label="Instagram: @cgrimsgaard"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r="1" fill="currentColor" stroke="none"/></svg></a>
   </div>
@@ -492,7 +492,7 @@ document.querySelectorAll('button.buy').forEach(function(b){
     if(window.VJ_BETALING==='privat') return visSkjema();
     b.disabled=true; b.textContent='Åpner Vipps …';
     var u=vjUtm();
-    vjGet({action:'create', cta:b.dataset.cta, utm_source:u.utm_source, utm_campaign:u.utm_campaign, fra:u.fra, ref:u.ref})
+    vjGet({action:'create', cta:b.dataset.cta, utm_source:u.utm_source, utm_campaign:u.utm_campaign, fra:u.fra, ref:u.ref, testpris:window.VJ_TESTPRIS||''})
       .then(function(d){
         b.disabled=false; b.innerHTML=tekst;
         if(d.error==='MANGLER_INFO'){ window.VJ_BETALING='privat'; return visSkjema(); }
@@ -520,7 +520,7 @@ skjema.addEventListener('submit',function(e){
   try{ sessionStorage.setItem('vj_kunde',JSON.stringify({navn:navn,epost:epost})); }catch(e){}
   var knapp=document.getElementById('tilBetaling'); knapp.disabled=true; knapp.textContent='Et øyeblikk …'; sFeil.hidden=true;
   var u=vjUtm();
-  vjPost({action:'create', navn:navn, epost:epost, cta:aktivCta, utm_source:u.utm_source, utm_campaign:u.utm_campaign, fra:u.fra, ref:u.ref})
+  vjPost({action:'create', navn:navn, epost:epost, cta:aktivCta, utm_source:u.utm_source, utm_campaign:u.utm_campaign, fra:u.fra, ref:u.ref, testpris:window.VJ_TESTPRIS||''})
     .then(function(d){
       if(d.redirectUrl){ location.href=d.redirectUrl; return; } // byttet til Vipps bedrift mens siden var åpen
       if(!d.ok||!d.takkUrl) throw new Error(d.error||'');

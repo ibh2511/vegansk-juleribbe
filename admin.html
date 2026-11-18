@@ -212,6 +212,7 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
 
     <div class="panel">
       <h2>Test</h2>
+      <p class="hint" id="epostKvote" hidden></p>
       <div class="test">
         <select id="tType" aria-label="Hva skal testes">
           <option value="kjop">Helt testkjøp (lager en ordre, nedlastingen virker)</option>
@@ -231,6 +232,13 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
         <button class="btn" type="button" id="testkjop">Lag testkjøp</button>
       </div>
       <p class="testsvar" id="testSvar" hidden></p>
+
+      <h3>Testlenke med 1 kr</h3>
+      <p class="hint">Lenken åpner forsiden med 1 kr som pris, bare for den som har lenken. Alle andre ser vanlig pris. Den virker i 2 timer, og kjøpene blir testordre (TEST-…) som ikke telles i statistikken. Send lenken til mobilen som skal betale.</p>
+      <div class="lag"><button class="btn" type="button" id="lagTestlenke">Lag testlenke</button><button class="lenke" type="button" id="stoppTestlenke" hidden>Stopp lenken</button></div>
+      <div class="resultat" id="testlenkeBoks" hidden><code id="testlenke"></code><button class="lenke" type="button" id="kopierTestlenke">Kopier</button></div>
+      <p class="hint" id="testlenkeTid" hidden></p>
+      <p class="testsvar" id="testlenkeSvar" hidden></p>
     </div>
 
     <div class="panel">
@@ -322,6 +330,9 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
       }).join(''):'<tr><td colspan="6" class="tom">Ingen innbetalinger venter på kobling.</td></tr>')+'</tbody>';
     if(!innstillingerRort) fyllInnstillinger(inn);
     if(!$('tEpost').value && inn.varselEpost) $('tEpost').value=inn.varselEpost; // din egen adresse som forslag
+    visTestlenke(inn.testlenke);
+    if(inn.epostIgjen!=null){ $('epostKvote').hidden=false;
+      $('epostKvote').textContent='E-poster backend kan sende nå: '+inn.epostIgjen+' av 100 per døgn. Er det 30 eller færre igjen, sendes bare kvitteringer og varsler, ikke betalingsinfo.'; }
     tegnBank(inn);
   }
   var innstillingerRort=false;
@@ -512,6 +523,28 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
       $('bankRaa').textContent=d.eksempler.map(function(x){ return JSON.stringify(x.raa,null,2); }).join('\n\n');
       $('bankRaa').hidden=!d.eksempler.length; hent();
     }).catch(function(){}).then(function(){ b.textContent='Test banken'; });
+  };
+  // Testlenke: 1 kr bare for den som har lenken, i 2 timer
+  function visTestlenke(t){
+    $('testlenkeBoks').hidden=!t; $('stoppTestlenke').hidden=!t; $('testlenkeTid').hidden=!t;
+    $('lagTestlenke').textContent=t?'Lag ny testlenke':'Lag testlenke';
+    if(!t) return;
+    if($('testlenke').textContent!==t.url){ $('testlenke').textContent=t.url; $('kopierTestlenke').textContent='Kopier'; }
+    $('testlenkeTid').textContent='Virker til kl. '+new Date(t.utloper).toLocaleTimeString('nb-NO',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Oslo'})+'. Lager du en ny, slutter den gamle å virke.';
+  }
+  $('lagTestlenke').onclick=function(){
+    var b=$('lagTestlenke'); b.disabled=true; svarBoks('testlenkeSvar','');
+    adminKall({action:'testlenke'},'testlenkeSvar').then(function(d){ visTestlenke(d.testlenke); })
+      .catch(function(){}).then(function(){ b.disabled=false; });
+  };
+  $('stoppTestlenke').onclick=function(){
+    adminKall({action:'testlenke',stopp:true},'testlenkeSvar').then(function(){
+      visTestlenke(null); svarBoks('testlenkeSvar','Testlenken er stoppet. Alle ser vanlig pris.');
+    }).catch(function(){});
+  };
+  $('kopierTestlenke').onclick=function(){
+    var t=$('testlenke').textContent;
+    (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){ $('kopierTestlenke').textContent='Kopiert!'; }).catch(function(){});
   };
   $('kopierRedirect').onclick=function(){
     var t=$('bRedirect').textContent;

@@ -11,6 +11,30 @@
   };
   var avvik = 0; // forskjell mellom serverens og maskinens klokke
 
+  // Testlenke fra admin (?testpris=…): bare den som har lenken, ser og betaler testprisen.
+  // Koden huskes i denne fanen og fjernes fra adressen, så den ikke deles ved et uhell.
+  var testkode = '';
+  try {
+    var u = new URL(location.href), q = u.searchParams.get('testpris');
+    if (q) {
+      sessionStorage.setItem('vj_testpris', q);
+      u.searchParams.delete('testpris');
+      history.replaceState(null, '', u.pathname + u.search + u.hash);
+    }
+    testkode = q || sessionStorage.getItem('vj_testpris') || '';
+  } catch (e) {}
+  window.VJ_TESTPRIS = testkode;
+
+  function testStripe(tekst) {
+    var el = document.getElementById('testprisStripe');
+    if (!el) {
+      el = document.createElement('div'); el.id = 'testprisStripe'; el.setAttribute('role', 'status');
+      el.style.cssText = 'position:sticky;top:0;z-index:1000;background:#fff1c2;color:#4a3800;text-align:center;padding:10px 16px;font:600 15px/1.35 system-ui,sans-serif;border-bottom:1px solid #e8d48a';
+      document.body.insertBefore(el, document.body.firstChild);
+    }
+    el.textContent = tekst;
+  }
+
   function dato(ms, medAar) {
     var o = { day: 'numeric', month: 'long', timeZone: 'Europe/Oslo' };
     if (medAar) o.year = 'numeric';
@@ -65,8 +89,14 @@
   setInterval(vis, 60000);
 
   if (window.VJ_API && window.vjGet) {
-    window.vjGet({ action: 'pris' }).then(function (d) {
+    window.vjGet(testkode ? { action: 'pris', testpris: testkode } : { action: 'pris' }).then(function (d) {
       if (!d || !d.ok) return;
+      if (testkode && d.test) testStripe('Testpris ' + d.pris + ' kr. Bare du ser denne prisen, fordi du åpnet testlenken.');
+      else if (testkode) {
+        testkode = window.VJ_TESTPRIS = '';
+        try { sessionStorage.removeItem('vj_testpris'); } catch (e) {}
+        testStripe('Testlenken har gått ut eller er stoppet, så prisen er vanlig. Lag en ny i admin.');
+      }
       C = { ordinaer: d.ordinaer, lansering: d.lansering, start: new Date(d.start).getTime(), slutt: new Date(d.slutt).getTime() };
       avvik = new Date(d.naa).getTime() - Date.now();
       vis();
