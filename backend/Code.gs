@@ -109,13 +109,15 @@ function vippsLenke_(nr, ore, melding) {
   return l;
 }
 
-/** Vipps-gebyret for et salg med Vipps bedrift, ut fra satsen i adminpanelet (prosent + kroner per salg). */
-// Vipps bedrift, Nettbetalinger / Checkout: 2,99 % + 1,00 kr per salg. Kan endres i admin.
-var GEBYR_STANDARD = { GEBYR_PROSENT: '2.99', GEBYR_KR: '1' };
+/**
+ * Vipps-gebyret for et salg med Vipps bedrift (Nettbetalinger / Checkout): 2,99 % + 1,00 kr per salg.
+ * Satsen er fra avtalen og står fast her. Endrer Vipps den, endres tallene under.
+ */
+var GEBYR_PROSENT = 2.99;
+var GEBYR_KR = 1;
 
 function gebyr_(kr) {
-  var tall = function (k) { return Number(String(cfg_(k, GEBYR_STANDARD[k])).replace(',', '.')) || 0; };
-  return Math.round((Number(kr) * tall('GEBYR_PROSENT') / 100 + tall('GEBYR_KR')) * 100) / 100;
+  return Math.round((Number(kr) * GEBYR_PROSENT / 100 + GEBYR_KR) * 100) / 100;
 }
 
 function sheet_(name) {
@@ -1371,7 +1373,7 @@ function innstillinger_() {
   return {
     betaling: betalingsmate_(), bedriftKlar: harVippsNokler_(), vippsEnv: cfg_('VIPPS_ENV', 'test'),
     nr: nr ? formatPhone_(nr) : '', utfylt: cfg_('VIPPS_LENKE_UTFYLT', 'ja') !== 'nei',
-    gebyrProsent: cfg_('GEBYR_PROSENT', GEBYR_STANDARD.GEBYR_PROSENT), gebyrKr: cfg_('GEBYR_KR', GEBYR_STANDARD.GEBYR_KR),
+    gebyrProsent: String(GEBYR_PROSENT), gebyrKr: String(GEBYR_KR),
     varselEpost: varselEpost_(),
     bank: {
       klientId: !!cfg_('BANK_CLIENT_ID', ''), hemmelighet: !!cfg_('BANK_CLIENT_SECRET', ''), finInst: cfg_('BANK_FININST', ''),
@@ -1392,7 +1394,7 @@ function adminInnstillinger_(p) {
     var betaling = p.betaling === 'privat' ? 'privat' : 'bedrift';
     if (betaling === 'privat' && !nr) return { ok: false, error: 'Legg inn mobilnummeret kundene skal vippse til før du bytter til Vipps privat.' };
     if (betaling === 'bedrift' && !harVippsNokler_()) return { ok: false, error: 'Vipps bedrift mangler nøkler i Skriptegenskaper (VIPPS_CLIENT_ID, VIPPS_CLIENT_SECRET, VIPPS_SUBSCRIPTION_KEY, VIPPS_MSN).' };
-    // Gebyret for Vipps bedrift settes ikke her: satsen fra avtalen står i GEBYR_STANDARD (kan overstyres i Skriptegenskaper).
+    // Gebyret for Vipps bedrift settes ikke her: satsen fra avtalen står fast i GEBYR_PROSENT og GEBYR_KR i koden.
     props.setProperties({ BETALING: betaling, VIPPS_PRIVAT_NR: nr, VIPPS_LENKE_UTFYLT: p.utfylt === false || p.utfylt === 'nei' ? 'nei' : 'ja' });
     if (betaling === 'privat') sikreBankUtloser_();
   }
