@@ -13,7 +13,40 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/side.css">
 <script src="assets/config.js"></script><script src="assets/api.js"></script>
+<script src="assets/vipps.js"></script><script src="assets/qrcode.min.js"></script>
 <title>Takk for kjøpet</title>
+<style>
+/* Betalingsboksen for Vipps privat */
+.betal{text-align:left}
+.betal .eyebrow{display:block;text-align:center;color:var(--red);font-weight:700;font-size:12.5px;letter-spacing:.14em;text-transform:uppercase}
+.betal h1{text-align:center;margin:6px 0 4px}
+.betal .ingress{text-align:center;margin-bottom:18px}
+.trinn{list-style:none;display:grid;gap:12px;margin:0}
+.trinn li{display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:start;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+.trinn .nr{width:34px;height:34px;border-radius:50%;background:var(--red);color:var(--cream);font-weight:700;display:flex;align-items:center;justify-content:center;font-size:16px}
+.trinn li.enkel{grid-template-columns:1fr}
+.trinn b{display:block;color:var(--ink);font-size:17px;line-height:1.3;margin-top:5px}
+.trinn small{display:block;color:var(--muted);font-size:14.5px;line-height:1.45;margin-top:4px}
+.kopier{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+.tlf{font-family:"Playfair Display",Georgia,serif;font-size:26px;font-weight:700;letter-spacing:.04em;color:var(--ink)}
+.knapp-liten{font:inherit;font-weight:700;font-size:15px;border:1.5px solid var(--green);color:var(--green);background:#fff;border-radius:999px;padding:7px 16px;cursor:pointer;min-height:40px}
+.knapp-liten.ok{background:var(--green);color:var(--cream)}
+.btn.vipps{background:var(--vipps);width:100%;margin-top:10px;box-shadow:0 6px 18px rgba(255,91,36,.3)}
+.reserve{display:inline-block;margin-top:10px;font-size:14.5px}
+.belop-stor{font-family:"Playfair Display",Georgia,serif;font-size:26px;font-weight:700;color:var(--ink);margin-top:6px}
+.qr{display:grid;grid-template-columns:180px 1fr;gap:18px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+.qr svg{width:180px;height:180px;display:block}
+.qr b{display:block;font-size:18px;color:var(--ink);line-height:1.3}
+@media(max-width:520px){.qr{grid-template-columns:1fr;justify-items:center;text-align:center}}
+.fra{margin-top:16px!important;font-size:15px;text-align:center}
+.fra button{background:none;border:0;color:var(--red);text-decoration:underline;cursor:pointer;font:inherit;padding:2px}
+.nytt-navn{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.nytt-navn .btn{margin-top:0;min-height:46px;font-size:16px;padding:10px 18px}
+.venter{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:18px;color:var(--muted);font-size:15px}
+.prikk{width:10px;height:10px;border-radius:50%;background:var(--vipps);animation:puls 1.4s ease-in-out infinite}
+@keyframes puls{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
+.liten-feil{color:var(--red-dark);font-size:14px;text-align:center;margin-top:8px}
+</style>
 </head>
 <body>
 <div class="band" aria-hidden="true"></div>
@@ -29,27 +62,95 @@
 (function(){
   var boks=document.getElementById('boks');
   var q=new URLSearchParams(location.search), ordre=q.get('ordre')||'', k=q.get('k')||'';
-  var forsok=0;
+  var forsok=0, privat=null, startet=Date.now(), timer=null;
   function vis(html){ boks.innerHTML=html; }
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+  function visBetalt(d){
+    clearTimeout(timer);
+    boks.className='box';
+    vis('<h1>Takk for kjøpet! 🎄</h1><p>Betalingen er godkjent. Ordrenummer <b>'+esc(ordre)+'</b>.</p>'+
+      (d.token?'<a class="btn" href="last-ned.html?t='+encodeURIComponent(d.token)+'">Last ned heftet</a>':'')+
+      '<p style="margin-top:18px">Vi har også sendt nedlastingslenken til <b>'+esc(d.epost||'e-posten din')+'</b>. Sjekk søppelpost hvis den ikke dukker opp.</p>');
+  }
+
+  // Vipps privat: kunden vippser til et mobilnummer. Boksen tegnes én gang, og siden sjekker videre i bakgrunnen.
+  function visBetaling(d){
+    if(privat){ return; }
+    privat=d;
+    var m=vjVipps.miljo(), l=vjVipps.lenker(d.lenke), v=vjVipps.valg(m);
+    var kr=d.belop+' kr', nr=String(d.nr||'').replace(/\D/g,'');
+    var naar=d.automatisk?'Siden oppdaterer seg selv når betalingen er kommet, vanligvis i løpet av ett minutt.':'Heftet kommer på e-post så snart betalingen er registrert.';
+    var trinn;
+    if(m.mobil){
+      trinn='<ol class="trinn">'+
+        '<li><span class="nr">1</span><div><b>Kopier mobilnummeret</b><div class="kopier"><span class="tlf">'+esc(d.mottaker)+'</span><button class="knapp-liten" type="button" id="kopier">Kopier</button></div></div></li>'+
+        '<li><span class="nr">2</span><div><b>Åpne Vipps</b><a class="btn vipps" id="aapne" href="'+esc(l[v.hoved])+'">Åpne Vipps</a>'+
+          '<a class="reserve" href="'+esc(l[v.reserve])+'">Åpnet ikke Vipps? Prøv denne lenken</a></div></li>'+
+        '<li><span class="nr">3</span><div><b>Betal '+esc(kr)+'</b><small>Nummer og beløp er som regel fylt ut allerede. Hvis ikke, limer du inn nummeret og skriver '+esc(kr)+'.</small></div></li>'+
+        '<li><span class="nr">4</span><div><b>Kom tilbake hit</b><small>'+naar+'</small></div></li>'+
+      '</ol>';
+    } else {
+      var svg=vjVipps.qrSvg(d.lenke);
+      trinn=(svg?'<div class="qr">'+svg+'<div><b>Skann QR-koden med kameraet på mobilen</b><small style="display:block;color:var(--muted);margin-top:6px">Da åpnes Vipps med nummer og beløp fylt ut. Betal, så dukker heftet opp her.</small></div></div>':'')+
+        '<ol class="trinn">'+
+        '<li class="enkel"><div><b>'+(svg?'Eller betal selv i Vipps på mobilen':'Betal i Vipps på mobilen')+'</b>'+
+          '<div class="kopier"><span class="tlf">'+esc(d.mottaker)+'</span><button class="knapp-liten" type="button" id="kopier">Kopier</button></div>'+
+          '<div class="belop-stor">'+esc(kr)+'</div><small>'+naar+'</small></div></li>'+
+      '</ol>';
+    }
+    boks.className='box betal';
+    vis('<span class="eyebrow">Ordre '+esc(d.ordre)+'</span><h1>Betal '+esc(kr)+' med Vipps</h1>'+
+      '<p class="ingress">Heftet kommer her og på e-post så snart betalingen er registrert.</p>'+trinn+
+      '<p class="fra" id="fra">Betal fra Vipps-kontoen til <b id="fraNavn">'+esc(d.navn)+'</b>, så finner vi betalingen din. '+
+        '<button type="button" id="endre">Betaler du fra en annens Vipps?</button></p>'+
+      '<form class="nytt-navn" id="nyttNavn" hidden><input id="navnFelt" autocomplete="off" placeholder="Fullt navn på Vipps-kontoen" maxlength="80" required>'+
+        '<button class="btn" type="submit">Lagre</button></form><p class="liten-feil" id="navnFeil" hidden></p>'+
+      '<div class="venter" role="status"><span class="prikk" aria-hidden="true"></span><span id="venterTekst">Venter på betalingen …</span></div>');
+    var kb=document.getElementById('kopier');
+    if(kb) kb.onclick=function(){
+      vjVipps.kopier(nr).then(function(){ kb.textContent='Kopiert!'; kb.classList.add('ok'); setTimeout(function(){ kb.textContent='Kopier'; kb.classList.remove('ok'); },2500); })
+        .catch(function(){ kb.textContent='Hold inne nummeret for å kopiere'; });
+    };
+    document.getElementById('endre').onclick=function(){ var f=document.getElementById('nyttNavn'); f.hidden=!f.hidden; if(!f.hidden) document.getElementById('navnFelt').focus(); };
+    document.getElementById('nyttNavn').onsubmit=function(e){
+      e.preventDefault();
+      var felt=document.getElementById('navnFelt'), feil=document.getElementById('navnFeil');
+      vjPost({action:'navn',ordre:ordre,k:k,navn:felt.value}).then(function(r){
+        if(!r.ok){ feil.textContent=r.error||'Noe gikk galt'; feil.hidden=false; return; }
+        feil.hidden=true; document.getElementById('fraNavn').textContent=r.navn; document.getElementById('nyttNavn').hidden=true;
+      }).catch(function(){ feil.textContent='Fikk ikke lagret navnet. Prøv igjen.'; feil.hidden=false; });
+    };
+  }
+
+  function planlegg(ms){ clearTimeout(timer); timer=setTimeout(sjekk,ms); }
   function sjekk(){
     vjGet({action:'status',ordre:ordre,k:k}).then(function(d){
       if(!d.ok) throw new Error(d.error);
-      if(d.status==='BETALT'){
-        vis('<h1>Takk for kjøpet! 🎄</h1><p>Betalingen er godkjent. Ordrenummer <b>'+ordre+'</b>.</p>'+
-          (d.token?'<a class="btn" href="last-ned.html?t='+d.token+'">Last ned heftet</a>':'')+
-          '<p style="margin-top:18px">Vi har også sendt nedlastingslenken til <b>'+(d.epost||'e-posten din')+'</b>. Sjekk søppelpost hvis den ikke dukker opp.</p>');
-      } else if(d.status==='VENTER' && forsok++<20){
-        setTimeout(sjekk,2500);
-      } else if(d.status==='VENTER'){
+      forsok=0;
+      if(d.status==='BETALT') return visBetalt(d);
+      if(d.status==='VENTER_BANK'){
+        visBetaling(d);
+        // Hvert 10. sekund den første timen, deretter hvert minutt. Backend spør banken høyst hvert 20. sekund.
+        if(document.visibilityState!=='hidden') planlegg(Date.now()-startet<36e5?10000:60000);
+        return;
+      }
+      if(d.status==='VENTER' && forsok++<20){ planlegg(2500); return; }
+      if(d.status==='VENTER'){
         vis('<h1>Betalingen er ikke fullført ennå</h1><p>Hvis du godkjente i Vipps, kommer e-posten med lenken i løpet av få minutter.</p><a class="btn" href="javascript:location.reload()">Sjekk igjen</a>');
       } else {
         vis('<h1>Betalingen ble avbrutt</h1><p>Ingen penger er trukket. Du kan prøve igjen når du vil.</p><a class="btn" href="./#kjop">Prøv igjen</a>');
       }
     }).catch(function(){
-      if(forsok++<5) return setTimeout(sjekk,3000);
-      vis('<h1>Noe gikk galt</h1><p>Vi fikk ikke sjekket betalingen. Har du betalt, får du e-posten innen kort tid. Ellers kan du skrive til <a href="mailto:'+VJ_KONTAKT+'">'+VJ_KONTAKT+'</a> og oppgi ordrenummer '+ordre+'.</p>');
+      if(privat){ planlegg(15000); return; }
+      if(forsok++<5) return planlegg(3000);
+      vis('<h1>Noe gikk galt</h1><p>Vi fikk ikke sjekket betalingen. Har du betalt, får du e-posten innen kort tid. Ellers kan du skrive til <a href="mailto:'+VJ_KONTAKT+'">'+VJ_KONTAKT+'</a> og oppgi ordrenummer '+esc(ordre)+'.</p>');
     });
   }
+  // Kunden kommer tilbake fra Vipps-appen: sjekk med en gang i stedet for å vente på neste runde.
+  document.addEventListener('visibilitychange',function(){
+    if(document.visibilityState==='visible' && privat){ var t=document.getElementById('venterTekst'); if(t) t.textContent='Sjekker betalingen …'; planlegg(300); setTimeout(function(){ if(t) t.textContent='Venter på betalingen …'; },4000); }
+  });
   sjekk();
 })();
 </script>

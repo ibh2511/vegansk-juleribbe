@@ -76,6 +76,8 @@ Prisen bytter automatisk på datoene over: nettsiden spør backend om gjeldende 
 
 Når du endrer koden i Apps Script senere: **Implementer → Administrer implementeringer → ✏️ → Ny versjon**. Da beholder du samme adresse.
 
+Med automatisk oppdatering (se [Automatisk oppdatering av backend](#automatisk-oppdatering-av-backend)) skjer dette av seg selv når noe i `backend/` merges til `main`.
+
 ## 6. GitHub Pages
 
 Repoet → **Settings → Pages** → «Deploy from a branch» → `main` og `/ (root)`. Siden blir tilgjengelig på `https://ibh2511.github.io/vegansk-juleribbe/`.
@@ -98,6 +100,53 @@ Med `VIPPS_ENV=test`:
 2. Lag en ny versjon av implementeringen (se steg 5).
 3. Gjør ett ekte kjøp selv og refunder det i Vipps-portalen.
 4. Fyll inn foretaksnavn, adresse og e-post i `vilkar.html`, `personvern.html` og bunnteksten på forsiden.
+
+## 9. Vipps privat (betaling til mobilnummer)
+
+I adminpanelet under **Betalingsløsning** velger du mellom:
+
+- **Vipps bedrift:** Betaling på nett med Vipps-avtalen, som beskrevet over. Vipps tar et gebyr per salg. Legg inn satsen fra avtalen (prosent og eventuelt kroner per salg), så viser adminpanelet gebyr og netto.
+- **Vipps privat:** Kunden skriver navn og e-post, får et ordrenummer og vippser til mobilnummeret du legger inn. Backend leser innbetalingene på kontoen din i SpareBank 1 og kobler dem til ordren på navn og beløp. Når betalingen er funnet, får kunden kvitteringen med heftet.
+
+Byttet gjelder med en gang på nettsiden. Tabellen **Salg per betalingsløsning** viser salg, omsetning, gebyr og netto for hver av dem.
+
+**Slik kobler du til banken (gjøres én gang):**
+
+1. Lag gjerne en egen konto i nettbanken, og velg den som konto for innbetalinger i Vipps-appen.
+2. Gå til [developer.sparebank1.no](https://developer.sparebank1.no), logg inn og trykk **Create new client**. Velg SpareBank 1 Lom og Skjåk. Som redirect-adresse limer du inn adressen adminpanelet viser under **Banken** (backendadressen med `?action=bank` bak).
+3. I adminpanelet under **Banken**: lim inn klient-ID og klienthemmelighet, og bank-ID hvis portalen viser en. Trykk **Koble til banken** og logg inn med BankID i fanen som åpnes.
+4. Velg kontoen Vipps-pengene kommer inn på, og trykk **Test banken**. Da ser du de siste innbetalingene slik banken sender dem.
+
+Hemmeligheten og tilgangen fra banken lagres bare i Skriptegenskaper (`BANK_CLIENT_ID`, `BANK_CLIENT_SECRET`, `BANK_REFRESH_TOKEN` m.fl.) og sendes aldri tilbake til nettleseren. Backend kaller bare konto- og transaksjonsoppslag og flytter aldri penger.
+
+**Slik fungerer det:**
+
+- Takkesiden viser betalingsboksen: kopier nummeret, åpne Vipps, betal, kom tilbake. På PC vises en QR-kode. Kunden får også en e-post med samme informasjon.
+- «Åpne Vipps» bruker en lenke som fyller ut nummer, beløp og meldingen «Juleribbe VJ-…». Formatet er ikke offisielt dokumentert. Virker det ikke, kan du slå av utfyllingen i admin, så fylles bare nummeret ut. Test lenkene på `vipps-test.html` fra iPhone, Android, Instagram, Facebook, Gmail og PC.
+- Mens kunden står på takkesiden, spør siden hvert 10. sekund, og backend spør banken høyst hvert 20. sekund. I tillegg sjekker en utløser hvert minutt så lenge en ordre har ventet under 48 timer. Utløseren lages når du kobler til banken eller velger Vipps privat.
+- Innbetalinger kobles på ordrenummeret i meldingen hvis det følger med, ellers på fornavn, etternavn og beløp. Bare innbetalinger med heftets beløp lagres (fanen **Bank**). Private vippsinger med andre beløp lagres ikke.
+- Innbetalinger som ikke kan kobles sikkert, havner i adminpanelet under **Vipps privat: venter på betaling**. Der kobler du dem til riktig ordre, eller trykker **Marker som betalt** når du har sett betalingen i nettbanken. Det fungerer også uten bankkobling.
+- Går tilgangen til banken ut eller slutter å virke, får du e-post til `VARSEL_EPOST` (eller `SVAR_EPOST`) med beskjed om å koble til på nytt.
+- Hver privat-ordre sender to e-poster (betalingsinfo og kvittering). Med Gmail-grensen på 100 e-poster i døgnet holder det til ca. 50 salg om dagen.
+
+## Automatisk oppdatering av backend
+
+Når dette er satt opp, sendes `backend/Code.gs` og `appsscript.json` til Apps Script og implementeringen får en ny versjon hver gang noe i `backend/` merges til `main`. Nettadressen til backenden er den samme. Bruk Google-kontoen som eier heftets Apps Script i alle stegene, ikke kontoen til juletreff-kumi.
+
+1. Åpne [script.google.com/home/usersettings](https://script.google.com/home/usersettings), sjekk at riktig konto står øverst til høyre, og slå på **Google Apps Script API**.
+2. I Terminal (Ubuntu: Ctrl+Alt+T), én linje om gangen. Den første flytter en eventuell innlogging for kumi til side:
+   ```bash
+   mv ~/.clasprc.json ~/.clasprc-kumi.json
+   npx @google/clasp@2.4.2 login
+   cat ~/.clasprc.json
+   ```
+   Logg inn med heftekontoen i nettleseren som åpnes. Kopier alt fra `{` til `}` som siste linje viser (Ctrl+Shift+C). Mangler `npx`, kjører du `sudo snap install node --classic` først.
+3. I GitHub: **Settings → Secrets and variables → Actions**.
+   - Under **Secrets**: `CLASPRC_JSON` med innholdet du kopierte.
+   - Under **Variables**: `APPS_SCRIPT_ID` (Apps Script → tannhjulet → Skript-ID) og `APPS_SCRIPT_DEPLOYMENT_ID` (ID-en i backendadressen, mellom `/s/` og `/exec`).
+4. Under **Actions** kjører du «Deploy Apps Script» én gang med **Run workflow** for å teste.
+
+Secret-et gir tilgang til Apps Script-prosjektene på kontoen. Koden i repoet overskriver det som ligger i Apps Script, så gjør endringer i repoet og ikke i Apps Script-editoren. Skriptegenskaper røres ikke.
 
 ## Samarbeidslenker
 

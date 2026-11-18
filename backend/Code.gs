@@ -2,8 +2,10 @@
  * Vegansk juleribbe – salgsbackend (Google Apps Script)
  *
  * Gjør dette:
- *  - Oppretter Vipps-betaling (ePayment API) og sender kunden til Vipps
- *  - Sjekker betaling, trekker beløpet og henter navn, e-post og telefon fra Vipps
+ *  - To betalingsløsninger som velges i adminpanelet:
+ *    · Vipps bedrift (ePayment API): oppretter betaling, sender kunden til Vipps, trekker beløpet
+ *    · Vipps privat: kunden vippser til et mobilnummer, og backend finner betalingen i
+ *      SpareBank 1-kontoen (personal banking API) og kobler den til ordren på navn og beløp
  *  - Lager en personlig PDF med vannmerke nederst på hver side
  *  - Sender e-post med nedlastingslenke
  *  - Leverer PDF-en via nedlastingssiden (tidsbegrenset og med maks antall nedlastinger)
@@ -45,14 +47,21 @@ function prisInfo_() {
   var o = prisOppsett_(), naa = new Date();
   var fase = naa < o.start ? 'for' : naa < o.slutt ? 'lansering' : 'etter';
   return { ok: true, pris: prisOre_(naa, o) / 100, ordinaer: o.ordinaer, lansering: o.lansering,
-    start: o.start.toISOString(), slutt: o.slutt.toISOString(), naa: naa.toISOString(), fase: fase };
+    start: o.start.toISOString(), slutt: o.slutt.toISOString(), naa: naa.toISOString(), fase: fase,
+    betaling: betalingsmate_() };
 }
 
 var ORDRE_ARK = 'Ordrer';
 var BESOK_ARK = 'Besøk';
+var BANK_ARK = 'Bank';
+// betaling: «bedrift» eller «privat». gebyr: Vipps-gebyret i kroner for salget (bare bedrift).
+// bank_id: transaksjonen i banken som betalte ordren. vipps_navn: navnet kunden betaler fra i Vipps.
 var ORDRE_KOLONNER = ['ordre', 'opprettet', 'status', 'navn', 'epost', 'telefon', 'token',
-  'nedlastinger', 'utloper', 'kilde', 'betalt', 'epost_sendt', 'nokkel', 'belop', 'cta', 'partner'];
+  'nedlastinger', 'utloper', 'kilde', 'betalt', 'epost_sendt', 'nokkel', 'belop', 'cta', 'partner',
+  'betaling', 'gebyr', 'bank_id', 'vipps_navn'];
 var BESOK_KOLONNER = ['tid', 'side', 'kilde', 'utm_source', 'utm_campaign', 'enhet', 'besokende', 'partner'];
+// Innbetalinger fra banken som har samme beløp som heftet. Andre innbetalinger lagres ikke.
+var BANK_KOLONNER = ['sett', 'bank_id', 'dato', 'belop', 'navn', 'tekst', 'type', 'bokforing', 'status', 'ordre'];
 var CTA_NAVN = ['hero', 'sticky', 'final'];
 
 /* ------------------------------------------------------------------ */
@@ -72,18 +81,48 @@ function vippsBase_() {
   return cfg_('VIPPS_ENV', 'test') === 'prod' ? 'https://api.vipps.no' : 'https://apitest.vipps.no';
 }
 
+/** «bedrift» (Vipps ePayment-avtalen) eller «privat» (vennebetaling til mobilnummer). Velges i adminpanelet. */
+function betalingsmate_() { return cfg_('BETALING', 'bedrift') === 'privat' ? 'privat' : 'bedrift'; }
+
+/** Alle fire nøklene til Vipps bedrift må ligge i Skriptegenskaper. */
+function harVippsNokler_() {
+  return ['VIPPS_CLIENT_ID', 'VIPPS_CLIENT_SECRET', 'VIPPS_SUBSCRIPTION_KEY', 'VIPPS_MSN']
+    .every(function (k) { return !!cfg_(k, ''); });
+}
+
+/** Mobilnummeret kundene vippser til i privat-løsningen (8 sifre). Settes i adminpanelet. */
+function privatNr_() { return String(cfg_('VIPPS_PRIVAT_NR', '')).replace(/\D/g, ''); }
+
+/**
+ * Lenke som åpner Vipps med mottaker (og beløp og melding) fylt ut. Samme format som Vipps bruker i
+ * QR-kodene for privatpersoner. Formatet er ikke offisielt dokumentert, så det kan slås av i admin
+ * (VIPPS_LENKE_UTFYLT=nei), og da fylles bare nummeret ut. Beløpet er i øre.
+ */
+function vippsLenke_(nr, ore, melding) {
+  var l = 'https://qr.vipps.no/28/2/01/031/' + String(nr).replace(/\D/g, '') + '?v=1';
+  if (cfg_('VIPPS_LENKE_UTFYLT', 'ja') !== 'nei') {
+    if (ore) l += '&a=' + Math.round(ore);
+    if (melding) l += '&m=' + encodeURIComponent(String(melding).slice(0, 50));
+  }
+  return l;
+}
+
+/** Vipps-gebyret for et salg med Vipps bedrift, ut fra satsen i adminpanelet (prosent + kroner per salg). */
+function gebyr_(kr) {
+  var tall = function (k) { return Number(String(cfg_(k, '0')).replace(',', '.')) || 0; };
+  return Math.round((Number(kr) * tall('GEBYR_PROSENT') / 100 + tall('GEBYR_KR')) * 100) / 100;
+}
+
 function sheet_(name) {
+  var kol = name === ORDRE_ARK ? ORDRE_KOLONNER : name === BESOK_ARK ? BESOK_KOLONNER : BANK_KOLONNER;
   var ss = SpreadsheetApp.openById(cfg_('SHEET_ID'));
   var sh = ss.getSheetByName(name);
   if (!sh) {
     sh = ss.insertSheet(name);
-    if (name === ORDRE_ARK) sh.appendRow(ORDRE_KOLONNER);
-    if (name === BESOK_ARK) sh.appendRow(BESOK_KOLONNER);
+    sh.appendRow(kol);
     sh.setFrozenRows(1);
-  } else if (name === ORDRE_ARK && sh.getLastColumn() < ORDRE_KOLONNER.length) {
-    sh.getRange(1, 1, 1, ORDRE_KOLONNER.length).setValues([ORDRE_KOLONNER]); // nye kolonner i eldre ark
-  } else if (name === BESOK_ARK && sh.getLastColumn() < BESOK_KOLONNER.length) {
-    sh.getRange(1, 1, 1, BESOK_KOLONNER.length).setValues([BESOK_KOLONNER]);
+  } else if (sh.getLastColumn() < kol.length) {
+    sh.getRange(1, 1, 1, kol.length).setValues([kol]); // nye kolonner i eldre ark
   }
   return sh;
 }
@@ -102,6 +141,8 @@ function doPost(e) {
 
 function route_(e, body) {
   var p = Object.assign({}, (e && e.parameter) || {}, body || {});
+  // SpareBank 1 sender nettleseren hit etter BankID-innloggingen. Svaret er en vanlig nettside.
+  if (p.action === 'bank' && !body) return bankCallback_(p);
   try {
     switch (p.action) {
       case 'create':   begrens_('create', 30); return json_(createPayment_(p));
@@ -115,6 +156,13 @@ function route_(e, body) {
       case 'nullstill': return json_(adminNullstill_(p.okt, p.angre));
       case 'testkjop': return json_(adminTestkjop_(p));
       case 'resend':   return json_(resend_(p.epost));
+      case 'navn':     begrens_('navn', 30); return json_(endreVippsNavn_(p));
+      case 'innstillinger': return json_(adminInnstillinger_(p));
+      case 'bankstart':  return json_(adminBankStart_(p));
+      case 'bankkontoer': return json_(adminBankKontoer_(p));
+      case 'banktest':   return json_(adminBankTest_(p));
+      case 'koble':      return json_(adminKoble_(p));
+      case 'ignorer':    return json_(adminIgnorer_(p));
       default:         return json_({ ok: true, info: 'Vegansk juleribbe API' });
     }
   } catch (err) {
@@ -182,6 +230,8 @@ function nextOrderNo_() {
 }
 
 function createPayment_(p) {
+  // Backend bestemmer løsningen, så en side som ble lastet før du byttet i admin, havner riktig likevel.
+  if (betalingsmate_() === 'privat') return createPrivat_(p);
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
   var ordre, row;
@@ -195,6 +245,7 @@ function createPayment_(p) {
     row.nokkel = nyNokkel_(); row.belop = prisOre_(row.opprettet) / 100;
     row.cta = CTA_NAVN.indexOf(p.cta) >= 0 ? p.cta : 'annet';
     row.partner = partnerNavn_(p.fra);
+    row.betaling = 'bedrift';
     sheet_(ORDRE_ARK).appendRow(ORDRE_KOLONNER.map(function (k) { return celle_(row[k]); }));
   } finally { lock.releaseLock(); }
 
@@ -219,6 +270,12 @@ function createPayment_(p) {
  */
 function checkOrder_(ordre, nokkel, fraUtloser) {
   if (!/^(VJ|TEST)-\d{5,}$/.test(ordre || '')) throw new Error('Ugyldig ordrenummer');
+  // Vipps privat: ingen betaling å sjekke hos Vipps. Betalingen finnes i banken (se statusPrivat_).
+  var forst = findOrder_('ordre', ordre);
+  if (forst && forst.data.betaling === 'privat') {
+    if (!fraUtloser && !(nokkel && String(nokkel) === String(forst.data.nokkel))) throw new Error('Fant ikke ordren');
+    return statusPrivat_(forst);
+  }
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -252,7 +309,9 @@ function checkOrder_(ordre, nokkel, fraUtloser) {
       telefon: formatPhone_(info.phone_number || ''),
       token: token,
       utloper: new Date(Date.now() + dager * 864e5),
-      betalt: new Date()
+      betalt: new Date(),
+      betaling: 'bedrift',
+      gebyr: gebyr_(pay.amount.value / 100) // satsen som gjaldt da salget skjedde
     };
     updateOrder_(o.row, fields);
     try {
@@ -272,6 +331,421 @@ function pollPending() {
     if (vals[i][2] === 'OPPRETTET' && new Date(vals[i][1]).getTime() > grense) {
       try { checkOrder_(vals[i][0], null, true); } catch (err) { console.error(err); }
     }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Vipps privat: kunden vippser til et mobilnummer                     */
+/* ------------------------------------------------------------------ */
+
+var PRIVAT_TIMER = 48; // så lenge en ubetalt ordre kan kobles automatisk
+
+/** Kjøp med Vipps privat: lager ordren og sender betalingsinfo på e-post. Kunden betaler fra takkesiden. */
+function createPrivat_(p) {
+  var nr = privatNr_();
+  if (nr.length !== 8) throw new Error('Salget er ikke helt klart. Prøv igjen litt senere.');
+  var navn = String(p.navn || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  var epost = String(p.epost || '').trim().toLowerCase().slice(0, 120);
+  // Siden ble lastet før du byttet til privat: be den vise skjemaet først.
+  if (!navn && !epost) return { ok: false, error: 'MANGLER_INFO', betaling: 'privat' };
+  if (navnOrd_(navn).length < 2) return { ok: false, error: 'Skriv fullt navn, slik det står i Vipps.' };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(epost)) return { ok: false, error: 'Skriv en gyldig e-postadresse.' };
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  var row;
+  try {
+    var ordre = nextOrderNo_();
+    var refDomene = String(p.ref || '').replace(/^https?:\/\//, '').split('/')[0];
+    row = {}; ORDRE_KOLONNER.forEach(function (k) { row[k] = ''; });
+    row.ordre = ordre; row.opprettet = new Date(); row.status = 'VENTER_BANK'; row.nedlastinger = 0;
+    row.kilde = [p.cta, p.utm_source, p.utm_campaign, refDomene].map(function (x) { return String(x || '').slice(0, 40); }).join(' / ');
+    row.nokkel = nyNokkel_(); row.belop = prisOre_(row.opprettet) / 100;
+    row.cta = CTA_NAVN.indexOf(p.cta) >= 0 ? p.cta : 'annet';
+    row.partner = partnerNavn_(p.fra);
+    row.navn = navn; row.epost = epost; row.vipps_navn = navn; row.betaling = 'privat';
+    sheet_(ORDRE_ARK).appendRow(ORDRE_KOLONNER.map(function (k) { return celle_(row[k]); }));
+    // Utløseren spør banken bare så lenge noen venter på betaling.
+    PropertiesService.getScriptProperties().setProperty('BANK_VENTER_TIL', String(Date.now() + PRIVAT_TIMER * 36e5));
+  } finally { lock.releaseLock(); }
+
+  var site = cfg_('SITE_URL').replace(/\/$/, '');
+  var takkUrl = site + '/takk.html?ordre=' + encodeURIComponent(row.ordre) + '&k=' + row.nokkel;
+  try { sendBetalingMail_(row, nr, takkUrl); } catch (err) { console.error('Betalings-e-post feilet for ' + row.ordre + ': ' + err); }
+  return { ok: true, ordre: row.ordre, k: row.nokkel, takkUrl: takkUrl, betaling: 'privat' };
+}
+
+function vippsMelding_(ordre) { return 'Juleribbe ' + ordre; }
+
+/** Svar til takkesiden for en privat-ordre. Spør banken hvis det er mer enn 20 sekunder siden sist. */
+function statusPrivat_(o) {
+  var betalt = function (d) { return { ok: true, status: 'BETALT', betaling: 'privat', epost: maskEmail_(d.epost), token: d.token }; };
+  if (o.data.status === 'BETALT') return betalt(o.data);
+  if (o.data.status !== 'VENTER_BANK') return { ok: true, status: o.data.status, betaling: 'privat' };
+  if (bankKlar_()) {
+    try { sjekkBankHvisLenge_(20); } catch (err) { console.error('Banksjekk feilet: ' + err); }
+    o = findOrder_('ordre', o.data.ordre);
+    if (o.data.status === 'BETALT') return betalt(o.data);
+  }
+  var nr = privatNr_(), ore = Math.round(Number(o.data.belop) * 100);
+  return {
+    ok: true, status: 'VENTER_BANK', betaling: 'privat', ordre: o.data.ordre, belop: Number(o.data.belop),
+    nr: nr, mottaker: formatPhone_(nr), navn: o.data.vipps_navn || o.data.navn, epost: maskEmail_(o.data.epost),
+    lenke: vippsLenke_(nr, ore, vippsMelding_(o.data.ordre)), melding: vippsMelding_(o.data.ordre),
+    automatisk: bankKlar_()
+  };
+}
+
+/** Kunden betaler fra en annen persons Vipps (f.eks. en partner): oppdaterer navnet vi ser etter i banken. */
+function endreVippsNavn_(p) {
+  var o = findOrder_('ordre', p.ordre);
+  if (!o || !p.k || String(p.k) !== String(o.data.nokkel)) throw new Error('Fant ikke ordren');
+  if (o.data.betaling !== 'privat' || o.data.status !== 'VENTER_BANK') return { ok: false, error: 'Ordren venter ikke på betaling' };
+  var navn = String(p.navn || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  if (navnOrd_(navn).length < 2) return { ok: false, error: 'Skriv fullt navn, slik det står i Vipps.' };
+  updateOrder_(o.row, { vipps_navn: navn });
+  return { ok: true, navn: navn };
+}
+
+/* ---- Navn og matching ---- */
+
+/** Navnet som ord uten store bokstaver, æøå og tegn: «Kari-Anne Nordmann» → ['kari', 'anne', 'nordmann']. */
+function navnOrd_(s) {
+  return String(s || '').toLowerCase().replace(/æ/g, 'ae').replace(/ø/g, 'o').replace(/å/g, 'a')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+    .split(' ').filter(function (w) { return w.length > 1; });
+}
+
+/** Fornavn og etternavn fra skjemaet må begge finnes i bankteksten. Mellomnavn i Vipps gjør ingenting. */
+function navnTreff_(navn, tekst) {
+  var o = navnOrd_(navn);
+  if (o.length < 2) return false;
+  var t = ' ' + navnOrd_(tekst).join(' ') + ' ';
+  return t.indexOf(' ' + o[0] + ' ') >= 0 && t.indexOf(' ' + o[o.length - 1] + ' ') >= 0;
+}
+
+function ore_(kr) { return Math.round(Number(kr) * 100); }
+
+/**
+ * Finner ordren en innbetaling hører til. Først på ordrenummer i meldingen (Vipps-lenken fyller det ut),
+ * så på navn og beløp. Returnerer ordren, 'FLERE' hvis det ikke går å skille, eller null.
+ */
+function finnOrdreForBetaling_(t, ventende) {
+  var tz = Session.getScriptTimeZone();
+  var kand = ventende.filter(function (o) {
+    if (ore_(o.data.belop) !== ore_(t.belop)) return false;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(t.dato)) return true;
+    return t.dato >= Utilities.formatDate(new Date(new Date(o.data.opprettet).getTime() - 864e5), tz, 'yyyy-MM-dd');
+  });
+  var m = t.tekst.match(/VJ[\s-]?(\d{5,})/i);
+  if (m) {
+    var nr = kand.filter(function (o) { return o.data.ordre === 'VJ-' + m[1]; });
+    if (nr.length === 1) return nr[0];
+  }
+  var navn = kand.filter(function (o) {
+    return navnTreff_(o.data.vipps_navn || o.data.navn, t.tekst) || navnTreff_(o.data.navn, t.tekst);
+  });
+  if (navn.length === 1) return navn[0];
+  if (navn.length > 1) {
+    // Samme kunde har trykket kjøp flere ganger: den nyeste ordren får betalingen.
+    var eposter = {}; navn.forEach(function (o) { eposter[String(o.data.epost).toLowerCase()] = 1; });
+    if (Object.keys(eposter).length === 1) return navn[navn.length - 1];
+    return 'FLERE';
+  }
+  return null;
+}
+
+/** Ordren er betalt: lager nedlastingslenke og sender kvitteringen. bankId er transaksjonen, eller tom ved manuell kobling. */
+function markerPrivatBetalt_(o, bankId) {
+  var token = nyNokkel_(40);
+  var dager = Number(cfg_('LENKE_DAGER', '7'));
+  updateOrder_(o.row, { status: 'BETALT', token: token, utloper: new Date(Date.now() + dager * 864e5),
+    betalt: new Date(), bank_id: bankId || 'manuell', gebyr: 0 });
+  o.data.status = 'BETALT'; o.data.bank_id = bankId || 'manuell'; o.data.token = token;
+  try {
+    sendMail_(o.data.epost, o.data.navn, o.data.ordre, token, o.data.belop);
+    updateOrder_(o.row, { epost_sendt: new Date() });
+  } catch (err) { console.error('E-post feilet for ' + o.data.ordre + ': ' + err); }
+}
+
+/* ---- SpareBank 1 personal banking API ---- */
+
+var SB1_AUTH = 'https://api-auth.sparebank1.no';
+var SB1_API = 'https://api.sparebank1.no';
+var SB1_ACCEPT = 'application/vnd.sparebank1.v1+json; charset=utf-8';
+
+function bankKlar_() { return !!(cfg_('BANK_REFRESH_TOKEN', '') && cfg_('BANK_ACCOUNT_KEY', '')); }
+
+function qs_(o) {
+  return Object.keys(o).filter(function (k) { return o[k] !== '' && o[k] != null; })
+    .map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(o[k]); }).join('&');
+}
+
+/** Bytter en BankID-kode eller et refresh-token mot nye tokens. */
+function bankTokenKall_(felter, erFornyelse) {
+  felter.client_id = cfg_('BANK_CLIENT_ID');
+  felter.client_secret = cfg_('BANK_CLIENT_SECRET');
+  var res = UrlFetchApp.fetch(SB1_AUTH + '/oauth/token', {
+    method: 'post', payload: felter, headers: { Accept: 'application/json' }, muteHttpExceptions: true
+  });
+  var code = res.getResponseCode(), txt = res.getContentText();
+  if (code !== 200) {
+    var melding = 'SpareBank 1 svarte ' + code + ' på token: ' + txt.slice(0, 200);
+    if (erFornyelse && (code === 400 || code === 401)) bankFrakoblet_(melding);
+    throw new Error(melding);
+  }
+  return JSON.parse(txt);
+}
+
+/** Lagrer tokens. Et nytt refresh-token erstatter det gamle med en gang, fordi det gamle kan slutte å virke. */
+function lagreBankTokens_(d) {
+  var props = PropertiesService.getScriptProperties();
+  if (d.refresh_token) props.setProperty('BANK_REFRESH_TOKEN', d.refresh_token);
+  if (d.refresh_token_expires_in) {
+    props.setProperty('BANK_REFRESH_UTLOPER', new Date(Date.now() + Number(d.refresh_token_expires_in) * 1000).toISOString());
+    props.deleteProperty('BANK_VARSLET_UTLOP');
+  }
+  props.setProperty('BANK_SIST_FORNYET', new Date().toISOString());
+  props.deleteProperty('BANK_FEIL'); props.deleteProperty('BANK_VARSLET_FEIL');
+  var sek = Math.max(60, Math.min(540, Number(d.expires_in || 600) - 60));
+  CacheService.getScriptCache().put('bank_token', d.access_token, sek);
+}
+
+function bankToken_(tving) {
+  var cache = CacheService.getScriptCache();
+  var t = tving ? null : cache.get('bank_token');
+  if (t) return t;
+  var rt = cfg_('BANK_REFRESH_TOKEN', '');
+  if (!rt) throw new Error('Banken er ikke koblet til');
+  var d = bankTokenKall_({ grant_type: 'refresh_token', refresh_token: rt }, true);
+  lagreBankTokens_(d);
+  return d.access_token;
+}
+
+/** Fornyelsen feilet: banken må godkjennes på nytt med BankID. Gir beskjed på e-post én gang. */
+function bankFrakoblet_(melding) {
+  var props = PropertiesService.getScriptProperties();
+  props.setProperty('BANK_FEIL', new Date().toISOString() + ' ' + melding);
+  if (props.getProperty('BANK_VARSLET_FEIL')) return;
+  props.setProperty('BANK_VARSLET_FEIL', '1');
+  varsle_('Banken må kobles til på nytt',
+    'Backend fikk ikke lenger lese innbetalinger fra SpareBank 1. Gå til adminpanelet, trykk «Koble til banken» og logg inn med BankID.\n\n' +
+    'Til det er gjort, må Vipps-betalinger kobles til ordre for hånd i adminpanelet.\n\nFeilmelding: ' + melding);
+}
+
+/** E-post til deg (VARSEL_EPOST, ellers SVAR_EPOST). */
+function varsle_(emne, tekst) {
+  var til = cfg_('VARSEL_EPOST', '') || cfg_('SVAR_EPOST', '');
+  if (!til) return;
+  try { MailApp.sendEmail(til, 'Vegansk juleribbe: ' + emne, tekst + '\n\nAdmin: ' + cfg_('SITE_URL', '').replace(/\/$/, '') + '/admin.html'); }
+  catch (err) { console.error('Varsel feilet: ' + err); }
+}
+
+function bankGet_(path, query) {
+  var url = SB1_API + path + (query ? '?' + qs_(query) : '');
+  for (var forsok = 0; forsok < 2; forsok++) {
+    var res = UrlFetchApp.fetch(url, {
+      headers: { Authorization: 'Bearer ' + bankToken_(forsok > 0), Accept: SB1_ACCEPT }, muteHttpExceptions: true
+    });
+    var code = res.getResponseCode(), txt = res.getContentText();
+    if (code === 401 && forsok === 0) continue; // tokenet gikk nettopp ut: hent nytt og prøv igjen
+    if (code >= 300) throw new Error('SpareBank 1 ' + path + ' → ' + code + ': ' + txt.slice(0, 300));
+    return txt ? JSON.parse(txt) : {};
+  }
+}
+
+/** Første liste i svaret (accounts, transactions, list …). Tåler at feltnavnet er et annet enn ventet. */
+function finnListe_(d, nokler) {
+  if (Array.isArray(d)) return d;
+  for (var i = 0; i < nokler.length; i++) if (d && Array.isArray(d[nokler[i]])) return d[nokler[i]];
+  for (var k in d) if (Array.isArray(d[k])) return d[k];
+  return [];
+}
+
+function tekstAv_(v) {
+  if (v == null) return '';
+  if (typeof v === 'object') return String(v.formatted || v.value || v.name || v.amount || '');
+  return String(v);
+}
+
+function bankKontoer_() {
+  var d = bankGet_('/personal/banking/accounts');
+  return finnListe_(d, ['accounts', 'list', 'items']).map(function (a) {
+    return { key: String(a.key || a.accountKey || a.id || ''), navn: tekstAv_(a.name || a.description || a.accountName),
+      nummer: tekstAv_(a.accountNumber || a.number) };
+  }).filter(function (a) { return a.key; });
+}
+
+/** Alle tekstfelt i en transaksjon, så navnet og meldingen blir funnet uansett hvilket felt banken bruker. */
+function alleTekster_(o, dybde) {
+  var ut = [];
+  if (dybde > 3 || o == null) return ut;
+  if (typeof o === 'string') { ut.push(o); return ut; }
+  if (typeof o !== 'object') return ut;
+  Object.keys(o).forEach(function (k) {
+    if (/key$|^id$|links?$/i.test(k)) return;
+    ut = ut.concat(alleTekster_(o[k], (dybde || 0) + 1));
+  });
+  return ut;
+}
+
+/** Gjør om en transaksjon fra banken til et fast format. Tåler ulike feltnavn. */
+function normTrans_(t) {
+  var tz = Session.getScriptTimeZone();
+  var a = t.amount;
+  var belop = a && typeof a === 'object' ? Number(a.amount != null ? a.amount : a.value) : Number(a);
+  var d = t.date || t.bookingDate || t.accountingDate || t.transactionDate || t.valueDate || '';
+  var dato = typeof d === 'number' ? Utilities.formatDate(new Date(d), tz, 'yyyy-MM-dd') : String(d).slice(0, 10);
+  var id = t.id || t.transactionId || t.archiveReference || '';
+  if (!id) {
+    var dig = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, JSON.stringify(t));
+    id = 'h' + dig.map(function (b) { return ('0' + (b & 255).toString(16)).slice(-2); }).join('');
+  }
+  return {
+    id: String(id), belop: belop, dato: dato,
+    navn: tekstAv_(t.remoteAccountName || t.counterpartyName || t.counterPartyName),
+    beskrivelse: [tekstAv_(t.description || t.cleanedDescription), tekstAv_(t.kidOrMessage || t.message)].filter(String).join(' · '),
+    type: tekstAv_(t.typeText || t.typeCode || t.type),
+    bokforing: tekstAv_(t.bookingStatus || t.status),
+    tekst: alleTekster_(t, 0).join(' ').slice(0, 2000)
+  };
+}
+
+/** Transaksjonene på kontoen fra de siste «dager» dagene, slik banken sender dem. */
+function bankRaa_(dager) {
+  var key = cfg_('BANK_ACCOUNT_KEY');
+  var fra = Utilities.formatDate(new Date(Date.now() - dager * 864e5), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  var d;
+  try { d = bankGet_('/personal/banking/transactions', { accountKey: key, fromDate: fra }); }
+  catch (err) {
+    if (!/→ 400/.test(err.message)) throw err;
+    d = bankGet_('/personal/banking/transactions', { accountKey: key }); // uten datofilter hvis banken ikke tar det
+  }
+  return finnListe_(d, ['transactions', 'list', 'items']);
+}
+
+function bankTransaksjoner_(dager) { return bankRaa_(dager).map(normTrans_); }
+
+/** Spør banken høyst én gang per «sek» sekunder, uansett hvor mange kunder som venter samtidig. */
+function sjekkBankHvisLenge_(sek) {
+  var cache = CacheService.getScriptCache();
+  if (cache.get('bank_sist')) return;
+  cache.put('bank_sist', '1', sek);
+  sjekkBank_();
+}
+
+/**
+ * Henter innbetalinger fra de siste tre dagene og kobler dem til ventende ordre.
+ * Bare innbetalinger med samme beløp som heftet lagres (fanen «Bank»), så private vippsinger blir ikke liggende.
+ */
+function sjekkBank_() {
+  if (!bankKlar_()) return { ok: false, error: 'Banken er ikke koblet til' };
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) return { ok: true, opptatt: true };
+  try {
+    var trans = bankTransaksjoner_(3);
+    PropertiesService.getScriptProperties().setProperty('BANK_SIST_SJEKKET', new Date().toISOString());
+
+    var bsh = sheet_(BANK_ARK), B = {}; BANK_KOLONNER.forEach(function (k, i) { B[k] = i; });
+    var sett = {};
+    bsh.getDataRange().getValues().slice(1).forEach(function (r) { sett[String(r[B.bank_id])] = 1; });
+
+    var vals = sheet_(ORDRE_ARK).getDataRange().getValues(), O = {}; ORDRE_KOLONNER.forEach(function (k, i) { O[k] = i; });
+    var grense = Date.now() - PRIVAT_TIMER * 36e5, nylig = Date.now() - 4 * 864e5;
+    var ventende = [], betalte = [];
+    for (var i = 1; i < vals.length; i++) {
+      if (vals[i][O.betaling] !== 'privat') continue;
+      var data = {}; ORDRE_KOLONNER.forEach(function (k, j) { data[k] = vals[i][j]; });
+      var o = { row: i + 1, data: data };
+      if (data.status === 'VENTER_BANK' && new Date(data.opprettet).getTime() > grense) ventende.push(o);
+      else if (data.status === 'BETALT' && new Date(data.betalt).getTime() > nylig) betalte.push(o);
+    }
+    var po = prisOppsett_(), priser = {};
+    priser[ore_(po.ordinaer)] = 1; priser[ore_(po.lansering)] = 1;
+    ventende.forEach(function (o) { priser[ore_(o.data.belop)] = 1; });
+
+    var nye = 0, koblet = 0;
+    trans.forEach(function (t) {
+      if (!(t.belop > 0) || sett[t.id] || !priser[ore_(t.belop)]) return;
+      var treff = finnOrdreForBetaling_(t, ventende), status = 'UMATCHET', ordre = '';
+      if (treff && treff !== 'FLERE') {
+        markerPrivatBetalt_(treff, t.id);
+        ventende.splice(ventende.indexOf(treff), 1);
+        betalte.push(treff);
+        status = 'KOBLET'; ordre = treff.data.ordre; koblet++;
+      } else if (!treff && betalte.some(function (o) {
+        // Samme navn og beløp som en ordre som nettopp ble betalt: trolig samme betaling igjen
+        // (reservert først, bokført etterpå), eller at kunden betalte to ganger.
+        return ore_(o.data.belop) === ore_(t.belop) && o.data.bank_id !== t.id && navnTreff_(o.data.vipps_navn || o.data.navn, t.tekst);
+      })) {
+        status = 'DUPLIKAT';
+      }
+      bsh.appendRow([new Date(), t.id, t.dato, t.belop, t.navn, [t.navn, t.beskrivelse].filter(String).join(' · ').slice(0, 300),
+        t.type, t.bokforing, status, ordre].map(celle_));
+      sett[t.id] = 1; nye++;
+    });
+    return { ok: true, transaksjoner: trans.length, nye: nye, koblet: koblet };
+  } finally { lock.releaseLock(); }
+}
+
+/**
+ * Tidsstyrt utløser hvert minutt. Spør banken bare når noen venter på betaling (de siste 48 timene),
+ * så kjøretiden holder seg langt under Googles grense. Fornyer også tilgangen én gang i døgnet.
+ */
+function sjekkBankUtloser() {
+  if (!cfg_('BANK_REFRESH_TOKEN', '')) return;
+  var props = PropertiesService.getScriptProperties();
+  var sist = new Date(props.getProperty('BANK_SIST_FORNYET') || 0).getTime();
+  if (Date.now() - sist > 20 * 36e5) {
+    try { bankToken_(true); } catch (err) { console.error(err); return; }
+  }
+  var utloper = props.getProperty('BANK_REFRESH_UTLOPER');
+  if (utloper && new Date(utloper).getTime() - Date.now() < 14 * 864e5 && !props.getProperty('BANK_VARSLET_UTLOP')) {
+    props.setProperty('BANK_VARSLET_UTLOP', '1');
+    varsle_('Banktilgangen går snart ut',
+      'Tilgangen til SpareBank 1 går ut ' + Utilities.formatDate(new Date(utloper), Session.getScriptTimeZone(), 'd. MMMM yyyy') +
+      '. Gå til adminpanelet, trykk «Koble til banken» og logg inn med BankID, så varer den på nytt.');
+  }
+  if (Date.now() > Number(props.getProperty('BANK_VENTER_TIL') || 0) || !bankKlar_()) return;
+  CacheService.getScriptCache().put('bank_sist', '1', 20);
+  sjekkBank_();
+}
+
+function sikreBankUtloser_() {
+  var finnes = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'sjekkBankUtloser'; });
+  if (!finnes) ScriptApp.newTrigger('sjekkBankUtloser').timeBased().everyMinutes(1).create();
+}
+
+/** SpareBank 1 sender nettleseren hit etter BankID. Bytter koden mot tokens og velger konto. */
+function bankCallback_(p) {
+  var side = function (tittel, tekst) {
+    return HtmlService.createHtmlOutput(
+      '<div style="font-family:system-ui,sans-serif;max-width:480px;margin:40px auto;padding:0 16px;color:#2a1d17">' +
+      '<h1 style="font-size:26px;color:#741218">' + escapeHtml_(tittel) + '</h1><p style="font-size:17px;line-height:1.5">' +
+      escapeHtml_(tekst) + '</p></div>').setTitle(tittel).addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  };
+  if (p.error) return side('Tilkoblingen ble avbrutt', String(p.error_description || p.error).slice(0, 200));
+  var cache = CacheService.getScriptCache();
+  if (!p.state || !/^[a-f0-9]{32}$/.test(p.state) || !cache.get('bank_state_' + p.state)) {
+    return side('Lenken er gått ut', 'Gå tilbake til adminpanelet og trykk «Koble til banken» på nytt.');
+  }
+  cache.remove('bank_state_' + p.state);
+  try {
+    var d = bankTokenKall_({ grant_type: 'authorization_code', code: String(p.code || ''), redirect_uri: cfg_('BANK_REDIRECT') }, false);
+    lagreBankTokens_(d);
+    var props = PropertiesService.getScriptProperties();
+    props.setProperty('BANK_TILKOBLET', new Date().toISOString());
+    var kontoer = bankKontoer_();
+    var valgt = kontoer.filter(function (k) { return k.key === cfg_('BANK_ACCOUNT_KEY', ''); })[0] ||
+      (kontoer.length === 1 ? kontoer[0] : kontoer.filter(function (k) { return /hefte|salg/i.test(k.navn); })[0]);
+    if (valgt) { props.setProperty('BANK_ACCOUNT_KEY', valgt.key); props.setProperty('BANK_KONTO_NAVN', valgt.navn + ' ' + valgt.nummer); }
+    sikreBankUtloser_();
+    return side('Banken er koblet til', valgt
+      ? 'Backend leser innbetalinger på kontoen «' + valgt.navn + '». Du kan lukke denne siden og gå tilbake til adminpanelet.'
+      : 'Gå tilbake til adminpanelet og velg kontoen Vipps-pengene kommer inn på.');
+  } catch (err) {
+    console.error(err);
+    return side('Noe gikk galt', String(err.message || err).slice(0, 300));
   }
 }
 
@@ -506,6 +980,65 @@ function sendMail_(to, navn, ordre, token, belop) {
     { htmlBody: html, name: cfg_('AVSENDER_NAVN', 'Vegansk juleribbe'), replyTo: cfg_('SVAR_EPOST', '') || undefined });
 }
 
+/** Vipps privat: e-post med betalingsinfo rett etter at kunden har bestilt. Kvitteringen kommer når betalingen er funnet. */
+function sendBetalingMail_(o, nr, takkUrl) {
+  if (!o.epost) return;
+  var fornavn = String(o.navn || '').split(' ')[0] || 'du';
+  var kr = Number(o.belop);
+  var lenke = vippsLenke_(nr, Math.round(kr * 100), vippsMelding_(o.ordre));
+  var serif = "font-family:'Playfair Display',Georgia,'Times New Roman',serif";
+  var sans = "font-family:'Source Sans 3','Segoe UI',Arial,sans-serif";
+  var rad = function (etikett, verdi, stor) {
+    return '<tr><td style="padding:10px 18px;color:#6b5a4e;border-top:1px solid #e6d8bf">' + etikett + '</td>' +
+      '<td align="right" style="padding:10px 18px;border-top:1px solid #e6d8bf;font-weight:bold;' + (stor ? 'font-size:20px;letter-spacing:1px' : '') + '">' + verdi + '</td></tr>';
+  };
+  var html =
+    '<!doctype html><html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="color-scheme" content="light"><title>Betal med Vipps</title></head>' +
+    '<body style="margin:0;padding:0;background:#f8f1e3">' +
+    '<div style="display:none;max-height:0;overflow:hidden;opacity:0">Betal ' + kr + ' kr med Vipps, så får du heftet med en gang.</div>' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f1e3"><tr><td align="center" style="padding:24px 12px">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:#fffaf0;border:1px solid #e6d8bf;border-radius:14px;overflow:hidden">' +
+    '<tr><td style="background:#5e0f16;color:#f8f1e3;' + sans + ';font-size:12px;letter-spacing:2px;text-transform:uppercase;text-align:center;padding:9px 16px">Vegansk juleribbe · av Celia Grimsgaard</td></tr>' +
+    '<tr><td style="background:#9e1b22;border-top:2px solid #c8a04a;border-bottom:2px solid #c8a04a;color:#c8a04a;text-align:center;font-size:13px;letter-spacing:6px;line-height:22px;padding:2px 0">✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦</td></tr>' +
+    '<tr><td style="padding:34px 32px 6px;text-align:center">' +
+    '<div style="' + sans + ';font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#9e1b22;font-weight:bold">Betaling</div>' +
+    '<h1 style="margin:10px 0 0;' + serif + ';font-size:32px;line-height:1.2;color:#741218;font-weight:700">Nesten ferdig!</h1>' +
+    '<div style="margin:14px auto 0;width:60px;border-top:2px solid #c8a04a;font-size:0;line-height:0">&nbsp;</div>' +
+    '</td></tr>' +
+    '<tr><td style="padding:18px 32px 8px;' + sans + ';font-size:17px;line-height:1.6;color:#2a1d17">' +
+    '<p style="margin:0 0 14px">Hei ' + escapeHtml_(fornavn) + '!</p>' +
+    '<p style="margin:0">Betal <b>' + kr + ' kr</b> med Vipps til nummeret under. Heftet kommer på e-post så snart betalingen er registrert, vanligvis i løpet av ett minutt.</p>' +
+    '</td></tr>' +
+    '<tr><td align="center" style="padding:24px 32px 8px">' +
+    '<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="background:#ff5b24;border-radius:999px">' +
+    '<a href="' + escapeHtml_(lenke) + '" style="display:inline-block;padding:15px 34px;' + sans + ';font-size:17px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:999px">Åpne Vipps og betal ' + kr + ' kr</a>' +
+    '</td></tr></table>' +
+    '<div style="margin-top:12px;' + sans + ';font-size:14px;color:#6b5a4e">Knappen virker på mobilen. Er du på PC, kan du skanne QR-koden på <a href="' + escapeHtml_(takkUrl) + '" style="color:#9e1b22">betalingssiden</a>.</div>' +
+    '</td></tr>' +
+    '<tr><td style="padding:24px 32px 6px">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f1e3;border:1px solid #e6d8bf;border-radius:10px;' + sans + ';font-size:15px;color:#2a1d17">' +
+    '<tr><td style="padding:12px 18px;color:#6b5a4e">Vipps til</td><td align="right" style="padding:12px 18px;font-weight:bold;font-size:20px;letter-spacing:1px">' + formatPhone_(nr) + '</td></tr>' +
+    rad('Beløp', kr + ' kr') +
+    rad('Fra Vipps-kontoen til', escapeHtml_(o.vipps_navn || o.navn)) +
+    rad('Ordrenummer', o.ordre) +
+    '</table></td></tr>' +
+    '<tr><td style="padding:18px 32px 30px;' + sans + ';font-size:15px;line-height:1.6;color:#6b5a4e">' +
+    'Vi finner betalingen din på navnet og beløpet, så det trenger ikke stå noe i meldingen. Betaler du fra en annen persons Vipps, kan du skrive det navnet på <a href="' + escapeHtml_(takkUrl) + '" style="color:#9e1b22">betalingssiden</a>.' +
+    '</td></tr>' +
+    '<tr><td style="background:#9e1b22;border-top:2px solid #c8a04a;font-size:0;line-height:0;height:6px">&nbsp;</td></tr>' +
+    '<tr><td style="background:#2a1d17;color:#b8a690;padding:16px 32px;' + sans + ';font-size:12px;line-height:1.6;text-align:center">Spørsmål? Bare svar på denne e-posten.</td></tr>' +
+    '</table></td></tr></table></body></html>';
+  MailApp.sendEmail(o.epost, 'Betal med Vipps: Vegansk juleribbe (' + o.ordre + ')',
+    'Hei ' + fornavn + '!\n\n' +
+    'Betal ' + kr + ' kr med Vipps til ' + formatPhone_(nr) + ', fra Vipps-kontoen til ' + (o.vipps_navn || o.navn) + '.\n\n' +
+    'Åpne Vipps (på mobilen): ' + lenke + '\n' +
+    'Betalingssiden: ' + takkUrl + '\n\n' +
+    'Heftet kommer på e-post så snart betalingen er registrert, vanligvis i løpet av ett minutt.\n\n' +
+    'Ordrenummer: ' + o.ordre + '\n\nHar du spørsmål, kan du svare på denne e-posten.',
+    { htmlBody: html, name: cfg_('AVSENDER_NAVN', 'Vegansk juleribbe'), replyTo: cfg_('SVAR_EPOST', '') || undefined });
+}
+
 /* ------------------------------------------------------------------ */
 /* Statistikk                                                          */
 /* ------------------------------------------------------------------ */
@@ -612,6 +1145,128 @@ function adminTestkjop_(p) {
     takkUrl: site + '/takk.html?ordre=' + encodeURIComponent(row.ordre) + '&k=' + row.nokkel };
 }
 
+/* ---- Betalingsløsning og bank (adminpanelet) ---- */
+
+/** Innstillingene adminpanelet viser. Hemmeligheter sendes aldri tilbake, bare om de er lagt inn. */
+function innstillinger_() {
+  var nr = privatNr_();
+  return {
+    betaling: betalingsmate_(), bedriftKlar: harVippsNokler_(), vippsEnv: cfg_('VIPPS_ENV', 'test'),
+    nr: nr ? formatPhone_(nr) : '', utfylt: cfg_('VIPPS_LENKE_UTFYLT', 'ja') !== 'nei',
+    gebyrProsent: cfg_('GEBYR_PROSENT', ''), gebyrKr: cfg_('GEBYR_KR', ''),
+    bank: {
+      klientId: !!cfg_('BANK_CLIENT_ID', ''), hemmelighet: !!cfg_('BANK_CLIENT_SECRET', ''), finInst: cfg_('BANK_FININST', ''),
+      tilkoblet: !!cfg_('BANK_REFRESH_TOKEN', ''), klar: bankKlar_(), konto: cfg_('BANK_KONTO_NAVN', ''),
+      sistSjekket: cfg_('BANK_SIST_SJEKKET', ''), tilkobletTid: cfg_('BANK_TILKOBLET', ''),
+      utloper: cfg_('BANK_REFRESH_UTLOPER', ''), feil: cfg_('BANK_FEIL', '')
+    }
+  };
+}
+
+function adminInnstillinger_(p) {
+  try { sjekkOkt_(p.okt); } catch (e) { return { ok: false, error: e.message, utlogget: true }; }
+  if (p.lagre) {
+    var props = PropertiesService.getScriptProperties();
+    var nr = String(p.nr || '').replace(/\D/g, '');
+    if (nr.length === 10 && nr.indexOf('47') === 0) nr = nr.slice(2);
+    if (nr && !/^[49]\d{7}$/.test(nr)) return { ok: false, error: 'Mobilnummeret må ha 8 sifre og starte på 4 eller 9.' };
+    var tall = function (v) { v = String(v == null ? '' : v).replace(',', '.').trim(); return v === '' ? '' : (isFinite(Number(v)) && Number(v) >= 0 ? v : null); };
+    var pst = tall(p.gebyrProsent), fast = tall(p.gebyrKr);
+    if (pst === null || fast === null) return { ok: false, error: 'Gebyret må være tall, for eksempel 2,99 og 1.' };
+    var betaling = p.betaling === 'privat' ? 'privat' : 'bedrift';
+    if (betaling === 'privat' && !nr) return { ok: false, error: 'Legg inn mobilnummeret kundene skal vippse til før du bytter til Vipps privat.' };
+    if (betaling === 'bedrift' && !harVippsNokler_()) return { ok: false, error: 'Vipps bedrift mangler nøkler i Skriptegenskaper (VIPPS_CLIENT_ID, VIPPS_CLIENT_SECRET, VIPPS_SUBSCRIPTION_KEY, VIPPS_MSN).' };
+    props.setProperties({ BETALING: betaling, VIPPS_PRIVAT_NR: nr, VIPPS_LENKE_UTFYLT: p.utfylt === false || p.utfylt === 'nei' ? 'nei' : 'ja',
+      GEBYR_PROSENT: pst, GEBYR_KR: fast });
+    if (betaling === 'privat') sikreBankUtloser_();
+  }
+  return { ok: true, innstillinger: innstillinger_() };
+}
+
+/** Lagrer klientopplysningene og gir lenken til BankID-innloggingen hos SpareBank 1. */
+function adminBankStart_(p) {
+  try { sjekkOkt_(p.okt); } catch (e) { return { ok: false, error: e.message, utlogget: true }; }
+  var props = PropertiesService.getScriptProperties();
+  var rens = function (v) { return String(v || '').trim().slice(0, 200); };
+  if (rens(p.klientId)) props.setProperty('BANK_CLIENT_ID', rens(p.klientId));
+  if (rens(p.hemmelighet)) props.setProperty('BANK_CLIENT_SECRET', rens(p.hemmelighet));
+  if (p.finInst !== undefined) props.setProperty('BANK_FININST', rens(p.finInst));
+  var redirect = String(p.redirect || '');
+  if (!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec\?action=bank$/.test(redirect)) {
+    return { ok: false, error: 'Ugyldig redirect-adresse. Sjekk VJ_API i assets/config.js.' };
+  }
+  props.setProperty('BANK_REDIRECT', redirect);
+  if (!cfg_('BANK_CLIENT_ID', '') || !cfg_('BANK_CLIENT_SECRET', '')) return { ok: false, error: 'Lim inn klient-ID og hemmelighet fra SpareBank 1 først.' };
+  var state = nyNokkel_(32);
+  CacheService.getScriptCache().put('bank_state_' + state, '1', 900);
+  var url = SB1_AUTH + '/oauth/authorize?' + qs_({ client_id: cfg_('BANK_CLIENT_ID'), state: state, redirect_uri: redirect,
+    finInst: cfg_('BANK_FININST', ''), response_type: 'code' });
+  return { ok: true, url: url, redirect: redirect };
+}
+
+/** Kontoene i banken. Med p.key velges kontoen Vipps-pengene kommer inn på. */
+function adminBankKontoer_(p) {
+  try { sjekkOkt_(p.okt); } catch (e) { return { ok: false, error: e.message, utlogget: true }; }
+  if (!cfg_('BANK_REFRESH_TOKEN', '')) return { ok: false, error: 'Koble til banken først.' };
+  var kontoer = bankKontoer_();
+  if (p.key) {
+    var k = kontoer.filter(function (x) { return x.key === p.key; })[0];
+    if (!k) return { ok: false, error: 'Fant ikke kontoen' };
+    PropertiesService.getScriptProperties().setProperties({ BANK_ACCOUNT_KEY: k.key, BANK_KONTO_NAVN: k.navn + ' ' + k.nummer });
+    sikreBankUtloser_();
+  }
+  return { ok: true, kontoer: kontoer.map(function (x) { return { key: x.key, navn: x.navn, nummer: x.nummer, valgt: x.key === cfg_('BANK_ACCOUNT_KEY', '') }; }),
+    innstillinger: innstillinger_() };
+}
+
+/** Sjekker banken nå og viser de siste innbetalingene slik banken sender dem, så feltene kan kontrolleres. */
+function adminBankTest_(p) {
+  try { sjekkOkt_(p.okt); } catch (e) { return { ok: false, error: e.message, utlogget: true }; }
+  if (!bankKlar_()) return { ok: false, error: 'Koble til banken og velg konto først.' };
+  var raa = bankRaa_(7);
+  var inn = raa.filter(function (t) { return normTrans_(t).belop > 0; }).slice(0, 5);
+  var sjekk = sjekkBank_();
+  return { ok: true, antall: raa.length, eksempler: inn.map(function (t) { return { tolket: normTrans_(t), raa: t }; }), sjekk: sjekk,
+    innstillinger: innstillinger_() };
+}
+
+/** Kobler en innbetaling (eller ingen, når du har sett betalingen selv) til en ventende privat-ordre. */
+function adminKoble_(p) {
+  try { sjekkOkt_(p.okt); } catch (e) { return { ok: false, error: e.message, utlogget: true }; }
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var o = findOrder_('ordre', p.ordre);
+    if (!o || o.data.betaling !== 'privat') return { ok: false, error: 'Fant ikke ordren' };
+    if (o.data.status === 'BETALT') return { ok: false, error: o.data.ordre + ' er allerede betalt' };
+    var bankId = String(p.bankId || '');
+    var b = bankId ? finnBankRad_(bankId) : null;
+    if (bankId && !b) return { ok: false, error: 'Fant ikke innbetalingen' };
+    markerPrivatBetalt_(o, bankId || 'manuell');
+    if (b) oppdaterBankRad_(b.row, { status: 'MANUELT', ordre: o.data.ordre });
+    return { ok: true, ordre: o.data.ordre };
+  } finally { lock.releaseLock(); }
+}
+
+function adminIgnorer_(p) {
+  try { sjekkOkt_(p.okt); } catch (e) { return { ok: false, error: e.message, utlogget: true }; }
+  var b = finnBankRad_(String(p.bankId || ''));
+  if (!b) return { ok: false, error: 'Fant ikke innbetalingen' };
+  oppdaterBankRad_(b.row, { status: 'IGNORERT' });
+  return { ok: true };
+}
+
+function finnBankRad_(bankId) {
+  var vals = sheet_(BANK_ARK).getDataRange().getValues(), col = BANK_KOLONNER.indexOf('bank_id');
+  for (var i = vals.length - 1; i >= 1; i--) if (String(vals[i][col]) === bankId) return { row: i + 1 };
+  return null;
+}
+
+function oppdaterBankRad_(row, fields) {
+  var sh = sheet_(BANK_ARK);
+  Object.keys(fields).forEach(function (k) { sh.getRange(row, BANK_KOLONNER.indexOf(k) + 1).setValue(celle_(fields[k])); });
+}
+
 function adminStats_(okt, antallDager) {
   try { sjekkOkt_(okt); } catch (e) { return { ok: false, error: e.message, utlogget: true }; }
 
@@ -647,6 +1302,7 @@ function adminStats_(okt, antallDager) {
 
   var O = {}; ORDRE_KOLONNER.forEach(function (k, i) { O[k] = i; });
   var po = prisOppsett_();
+  var perBetaling = { bedrift: { salg: 0, omsetning: 0, gebyr: 0 }, privat: { salg: 0, omsetning: 0, gebyr: 0 } };
   var ordre = sheet_(ORDRE_ARK).getDataRange().getValues().slice(1);
   ordre.forEach(function (r) {
     if (String(r[O.ordre]).indexOf('TEST-') === 0) return; // testkjøp fra adminpanelet telles ikke
@@ -660,7 +1316,15 @@ function adminStats_(okt, antallDager) {
     if (r[O.status] === 'BETALT') {
       var belop = Number(r[O.belop]) || prisOre_(r[O.opprettet], po) / 100;
       kr.salg++; kr.omsetning += belop; dr.salg++; dr.omsetning += belop;
+      // Ordre fra før løsningene fikk egen kolonne ble betalt med Vipps bedrift.
+      var los = r[O.betaling] === 'privat' ? 'privat' : 'bedrift';
+      var g = los === 'privat' ? 0 : (r[O.gebyr] !== '' && r[O.gebyr] != null ? Number(r[O.gebyr]) : gebyr_(belop));
+      perBetaling[los].salg++; perBetaling[los].omsetning += belop; perBetaling[los].gebyr += g;
     }
+  });
+  Object.keys(perBetaling).forEach(function (k) {
+    var x = perBetaling[k];
+    x.gebyr = Math.round(x.gebyr * 100) / 100; x.netto = Math.round((x.omsetning - x.gebyr) * 100) / 100;
   });
 
   var liste = Object.keys(kilder).map(function (k) {
@@ -681,10 +1345,26 @@ function adminStats_(okt, antallDager) {
 
   var siste = ordre.slice(-25).reverse().map(function (r) {
     return { ordre: r[O.ordre], tid: r[O.opprettet], status: r[O.status], navn: r[O.navn], epost: r[O.epost], telefon: r[O.telefon],
-      nedlastinger: r[O.nedlastinger], belop: r[O.belop], cta: r[O.cta] || String(r[O.kilde] || '').split(' / ')[0], partner: r[O.partner] };
+      nedlastinger: r[O.nedlastinger], belop: r[O.belop], cta: r[O.cta] || String(r[O.kilde] || '').split(' / ')[0], partner: r[O.partner],
+      betaling: String(r[O.ordre]).indexOf('TEST-') === 0 ? 'test' : (r[O.betaling] || 'bedrift') };
   });
 
-  return { ok: true, periode: n, statsFra: statsFra, totalt: tot, dager: dager, kilder: liste, knapper: knapper, enheter: enheter, siste: siste };
+  // Vipps privat: ordre som venter på betaling, og innbetalinger som ikke ble koblet automatisk
+  var ventende = ordre.filter(function (r) {
+    return r[O.betaling] === 'privat' && r[O.status] === 'VENTER_BANK' && new Date(r[O.opprettet]).getTime() > Date.now() - 7 * 864e5;
+  }).reverse().map(function (r) {
+    return { ordre: r[O.ordre], tid: r[O.opprettet], navn: r[O.navn], vippsNavn: r[O.vipps_navn], epost: r[O.epost], belop: r[O.belop] };
+  });
+  var Bk = {}; BANK_KOLONNER.forEach(function (k, i) { Bk[k] = i; });
+  var umatchede = sheet_(BANK_ARK).getDataRange().getValues().slice(1).filter(function (r) {
+    return r[Bk.status] === 'UMATCHET' || r[Bk.status] === 'DUPLIKAT';
+  }).slice(-30).reverse().map(function (r) {
+    return { bankId: String(r[Bk.bank_id]), dato: r[Bk.dato] instanceof Date ? dag(r[Bk.dato]) : String(r[Bk.dato]), belop: r[Bk.belop],
+      navn: r[Bk.navn], tekst: r[Bk.tekst], status: r[Bk.status] };
+  });
+
+  return { ok: true, periode: n, statsFra: statsFra, totalt: tot, dager: dager, kilder: liste, knapper: knapper, enheter: enheter, siste: siste,
+    perBetaling: perBetaling, ventende: ventende, umatchede: umatchede, innstillinger: innstillinger_() };
 }
 
 /* ------------------------------------------------------------------ */
@@ -768,6 +1448,8 @@ function oppsett() {
     if (t.getHandlerFunction() === 'pollPending') ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger('pollPending').timeBased().everyMinutes(5).create();
+  sheet_(BANK_ARK);
+  sikreBankUtloser_(); // Vipps privat: spør banken hvert minutt mens noen venter på betaling
   console.log('Regneark: ' + SpreadsheetApp.openById(props.getProperty('SHEET_ID')).getUrl());
 }
 

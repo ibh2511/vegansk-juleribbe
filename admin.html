@@ -64,6 +64,29 @@ tbody tr:hover{background:#fbf7ee}
 .resultat code{background:#f7f1e4;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px;word-break:break-all}
 .venstre th,.venstre td{text-align:left}
 .tom{color:var(--muted);font-size:14px;padding:8px 0}
+.panel h3{font-size:17px;margin:18px 0 4px}
+.valg{display:grid;gap:10px;margin-bottom:14px}
+@media(min-width:760px){.valg{grid-template-columns:1fr 1fr}}
+.valgkort{display:block;border:1.5px solid var(--line);border-radius:12px;padding:12px 14px 12px 40px;position:relative;cursor:pointer;background:#fffdf8}
+.valgkort input{position:absolute;left:14px;top:15px;width:18px;height:18px;accent-color:var(--green)}
+.valgkort b{display:block;font-size:16px}
+.valgkort span{display:block;color:var(--muted);font-size:14px;line-height:1.45;margin-top:2px}
+.valgkort em{display:block;font-style:normal;font-size:13px;font-weight:700;margin-top:6px}
+.valgkort em.ok{color:var(--green)}.valgkort em.mangler{color:var(--red)}
+.valgkort:has(input:checked){border-color:var(--green);background:#f3f7f2}
+.felt-rad{display:grid;gap:10px;margin:10px 0}
+@media(min-width:760px){.felt-rad{grid-template-columns:repeat(3,1fr)}}
+.felt-rad label{font-size:14px;font-weight:600;color:var(--ink)}
+.felt-rad input{display:block;max-width:none;margin-top:4px;min-height:44px}
+.felt-rad .hake{display:flex;align-items:center;gap:8px;font-weight:400;align-self:end;min-height:44px}
+.felt-rad .hake input{width:18px;height:18px;min-height:0;margin:0;accent-color:var(--green)}
+.chip{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;margin-left:6px;vertical-align:1px;background:#eef3ee;color:var(--green)}
+.chip.advarsel{background:#fbeaea;color:var(--red-dark)}
+td .btn{margin-top:0;font-size:14px;min-height:36px;padding:6px 12px}
+td select{max-width:220px;font-size:14px;padding:6px 8px}
+tr.sum td{font-weight:700;border-top:2px solid var(--line)}
+code.inline{background:#f7f1e4;border:1px solid var(--line);border-radius:6px;padding:2px 6px;font-size:13px;word-break:break-all}
+pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-size:12px;overflow:auto;max-height:360px;margin-top:10px;white-space:pre-wrap;word-break:break-all}
 @media(min-width:760px){.kpis{grid-template-columns:repeat(6,1fr)}}
 </style>
 </head>
@@ -97,6 +120,23 @@ tbody tr:hover{background:#fbf7ee}
     <div class="kpis" id="kpis"></div>
 
     <div class="panel">
+      <h2>Salg per betalingsløsning</h2>
+      <p class="hint">Gebyret er det Vipps tar for Vipps bedrift. Vipps privat har ikke gebyr.</p>
+      <div class="tabell"><table id="perBetaling"></table></div>
+      <p class="hint" id="gebyrHint" style="margin:10px 0 0" hidden></p>
+    </div>
+
+    <div class="panel" id="ventePanel" hidden>
+      <h2>Vipps privat: venter på betaling</h2>
+      <p class="hint">Ordre der betalingen ikke er funnet ennå. Ser du betalingen i nettbanken, trykker du «Marker som betalt», så får kunden heftet.</p>
+      <div class="tabell"><table id="ventende" class="venstre"></table></div>
+      <h3>Innbetalinger som ikke ble koblet</h3>
+      <p class="hint">Velg ordren betalingen hører til og trykk «Koble». Gjelder den ikke heftet, trykker du «Ignorer».</p>
+      <div class="tabell"><table id="umatchede" class="venstre"></table></div>
+      <p class="testsvar" id="venteSvar" hidden></p>
+    </div>
+
+    <div class="panel">
       <h2>Kilder og samarbeid</h2>
       <p class="hint">Trykk på en kolonne for å sortere. Klikk er trykk på Vipps-knappene.</p>
       <div class="tabell"><table id="kilder"></table></div>
@@ -127,6 +167,46 @@ tbody tr:hover{background:#fbf7ee}
     <div class="panel">
       <h2>Siste ordre</h2>
       <div class="tabell"><table id="ordre"></table></div>
+    </div>
+
+    <div class="panel" id="innstillingerPanel">
+      <h2>Betalingsløsning</h2>
+      <p class="hint">Velg hvordan kundene betaler. Byttet gjelder med en gang på nettsiden.</p>
+      <div class="valg">
+        <label class="valgkort"><input type="radio" name="betaling" value="bedrift"><b>Vipps bedrift</b><span>Betaling på nett med Vipps-avtalen. Kunden godkjenner i Vipps og får heftet med en gang. Vipps tar et gebyr per salg.</span><em id="bedriftStatus"></em></label>
+        <label class="valgkort"><input type="radio" name="betaling" value="privat"><b>Vipps privat</b><span>Kunden vippser til mobilnummeret under. Backend finner betalingen i banken på navn og beløp og sender heftet.</span><em id="privatStatus"></em></label>
+      </div>
+      <div class="felt-rad">
+        <label>Mobilnummer kundene vippser til<input id="iNr" inputmode="numeric" maxlength="15" placeholder="912 34 567" autocomplete="off"></label>
+        <label class="hake"><input type="checkbox" id="iUtfylt">Fyll ut beløp og melding i Vipps-lenken</label>
+      </div>
+      <div class="felt-rad">
+        <label>Vipps-gebyr i prosent<input id="iPst" inputmode="decimal" placeholder="f.eks. 2,99" autocomplete="off"></label>
+        <label>Fast gebyr per salg (kr)<input id="iKr" inputmode="decimal" placeholder="f.eks. 0" autocomplete="off"></label>
+      </div>
+      <p class="hint">Gebyrsatsen står i avtalen din på portal.vippsmobilepay.com. Den lagres på hvert nye salg med Vipps bedrift, og brukes også for eldre salg som ikke har lagret gebyr.</p>
+      <div class="lag"><button class="btn" type="button" id="lagreInnst">Lagre</button></div>
+      <p class="testsvar" id="innstSvar" hidden></p>
+    </div>
+
+    <div class="panel" id="bankPanel">
+      <h2>Banken (SpareBank 1)</h2>
+      <p class="hint">Trengs for Vipps privat. Backend leser bare innbetalinger på kontoen du velger, og flytter aldri penger.</p>
+      <p class="statsfra" id="bankStatus"></p>
+      <div class="felt-rad">
+        <label>Klient-ID<input id="bKlient" autocomplete="off"></label>
+        <label>Klienthemmelighet<input id="bHemmelig" type="password" autocomplete="new-password"></label>
+        <label>Bank-ID (finInst, valgfritt)<input id="bFin" autocomplete="off" placeholder="hvis portalen viser en"></label>
+      </div>
+      <p class="hint">Redirect-adressen du limer inn i utviklerportalen: <code class="inline" id="bRedirect"></code> <button class="lenke" type="button" id="kopierRedirect">Kopier</button></p>
+      <div class="lag">
+        <button class="btn" type="button" id="kobleBank">Koble til banken</button>
+        <button class="lenke" type="button" id="byttKonto">Velg konto</button>
+        <select id="bKonto" hidden aria-label="Konto"></select>
+        <button class="lenke" type="button" id="testBank">Test banken</button>
+      </div>
+      <p class="testsvar" id="bankSvar" hidden></p>
+      <pre class="raa" id="bankRaa" hidden></pre>
     </div>
 
     <div class="panel">
@@ -188,8 +268,81 @@ tbody tr:hover{background:#fbf7ee}
       (dager.length?dager.map(function(x){
         return '<tr><td>'+esc(new Date(x.dag+'T12:00:00').toLocaleDateString('nb-NO',{weekday:'short',day:'numeric',month:'short'}))+'</td><td>'+x.unike+'</td><td>'+x.besok+'</td><td>'+x.klikk+'</td><td>'+x.salg+'</td><td>'+kr(x.omsetning)+'</td><td>'+pst(x.salg,x.unike)+'</td></tr>';
       }).join(''):'<tr><td colspan="7" class="tom">Ingen data i perioden.</td></tr>')+'</tbody>';
-    $('ordre').className='venstre'; $('ordre').innerHTML='<thead><tr><th>Ordre</th><th>Tid</th><th>Status</th><th>Beløp</th><th>Knapp</th><th>Samarbeid</th><th>Navn</th><th>E-post</th><th>Telefon</th><th>Nedl.</th></tr></thead><tbody>'+
-      data.siste.map(function(o){return '<tr><td>'+esc(o.ordre)+'</td><td>'+esc(new Date(o.tid).toLocaleString('nb-NO',{dateStyle:'short',timeStyle:'short'}))+'</td><td>'+esc(o.status)+'</td><td>'+esc(o.belop?o.belop+' kr':'')+'</td><td>'+esc(KNAPP[o.cta]?o.cta:'')+'</td><td>'+esc(o.partner)+'</td><td>'+esc(o.navn)+'</td><td>'+esc(o.epost)+'</td><td>'+esc(o.telefon)+'</td><td>'+esc(o.nedlastinger)+'</td></tr>';}).join('')+'</tbody>';
+    $('ordre').className='venstre'; $('ordre').innerHTML='<thead><tr><th>Ordre</th><th>Tid</th><th>Status</th><th>Beløp</th><th>Betaling</th><th>Knapp</th><th>Samarbeid</th><th>Navn</th><th>E-post</th><th>Telefon</th><th>Nedl.</th></tr></thead><tbody>'+
+      data.siste.map(function(o){return '<tr><td>'+esc(o.ordre)+'</td><td>'+esc(tid(o.tid))+'</td><td>'+esc(STATUS[o.status]||o.status)+'</td><td>'+esc(o.belop?o.belop+' kr':'')+'</td><td>'+esc(LOSNING[o.betaling]||o.betaling||'')+'</td><td>'+esc(KNAPP[o.cta]?o.cta:'')+'</td><td>'+esc(o.partner)+'</td><td>'+esc(o.navn)+'</td><td>'+esc(o.epost)+'</td><td>'+esc(o.telefon)+'</td><td>'+esc(o.nedlastinger)+'</td></tr>';}).join('')+'</tbody>';
+    tegnBetaling();
+  }
+  var LOSNING={bedrift:'Vipps bedrift',privat:'Vipps privat',test:'Testkjøp'};
+  var STATUS={VENTER_BANK:'Venter på betaling',BETALT:'Betalt',OPPRETTET:'Startet',ABORTED:'Avbrutt',EXPIRED:'Utløpt',TERMINATED:'Avbrutt'};
+  function tid(t){ return new Date(t).toLocaleString('nb-NO',{dateStyle:'short',timeStyle:'short'}); }
+  function kr2(n){ return (Math.round(n*100)/100).toLocaleString('nb-NO',{minimumFractionDigits:Math.round(n)===n?0:2,maximumFractionDigits:2})+' kr'; }
+
+  // Salg per løsning, ventende privat-ordre, innbetalinger som ikke ble koblet, innstillinger og bank
+  function tegnBetaling(){
+    var pb=data.perBetaling||{bedrift:{salg:0,omsetning:0,gebyr:0,netto:0},privat:{salg:0,omsetning:0,gebyr:0,netto:0}};
+    var inn=data.innstillinger||{bank:{}}, aktiv=inn.betaling||'bedrift';
+    var rad=function(navn,x,ekstra){ return '<tr'+(ekstra||'')+'><td>'+navn+'</td><td>'+x.salg+'</td><td>'+kr2(x.omsetning)+'</td><td>'+kr2(x.gebyr)+'</td><td>'+kr2(x.netto)+'</td></tr>'; };
+    var sum={salg:pb.bedrift.salg+pb.privat.salg,omsetning:pb.bedrift.omsetning+pb.privat.omsetning,gebyr:pb.bedrift.gebyr+pb.privat.gebyr,netto:pb.bedrift.netto+pb.privat.netto};
+    $('perBetaling').innerHTML='<thead><tr><th>Løsning</th><th>Salg</th><th>Omsetning</th><th>Gebyr</th><th>Netto</th></tr></thead><tbody>'+
+      rad('Vipps bedrift'+(aktiv==='bedrift'?'<span class="chip">I bruk</span>':''),pb.bedrift)+
+      rad('Vipps privat'+(aktiv==='privat'?'<span class="chip">I bruk</span>':''),pb.privat)+
+      rad('Totalt',sum,' class="sum"')+'</tbody>';
+    var harSats=inn.gebyrProsent||inn.gebyrKr;
+    $('gebyrHint').hidden=!!harSats || !pb.bedrift.salg;
+    $('gebyrHint').innerHTML='<span class="chip advarsel">Mangler sats</span> Legg inn gebyrsatsen under «Betalingsløsning», så regnes gebyr og netto ut.';
+
+    var vent=data.ventende||[], um=data.umatchede||[];
+    $('ventePanel').hidden=!vent.length && !um.length && aktiv!=='privat';
+    $('ventende').innerHTML='<thead><tr><th>Ordre</th><th>Bestilt</th><th>Navn i Vipps</th><th>E-post</th><th>Beløp</th><th></th></tr></thead><tbody>'+
+      (vent.length?vent.map(function(o){
+        return '<tr><td>'+esc(o.ordre)+'</td><td>'+esc(tid(o.tid))+'</td><td>'+esc(o.vippsNavn||o.navn)+(o.vippsNavn&&o.vippsNavn!==o.navn?' <span class="hint">('+esc(o.navn)+')</span>':'')+'</td><td>'+esc(o.epost)+'</td><td>'+esc(o.belop)+' kr</td>'+
+          '<td><button class="btn" type="button" data-betalt="'+esc(o.ordre)+'">Marker som betalt</button></td></tr>';
+      }).join(''):'<tr><td colspan="6" class="tom">Ingen venter på betaling.</td></tr>')+'</tbody>';
+    $('umatchede').innerHTML='<thead><tr><th>Dato</th><th>Beløp</th><th>Fra / tekst</th><th>Status</th><th>Ordre</th><th></th></tr></thead><tbody>'+
+      (um.length?um.map(function(b){
+        var valg=vent.filter(function(o){ return Number(o.belop)===Number(b.belop); });
+        return '<tr><td>'+esc(b.dato)+'</td><td>'+esc(b.belop)+' kr</td><td style="white-space:normal;min-width:180px">'+esc(b.tekst||b.navn)+'</td>'+
+          '<td>'+(b.status==='DUPLIKAT'?'<span class="chip advarsel">Mulig dobbel betaling</span>':'Ikke koblet')+'</td>'+
+          '<td><select data-velg="'+esc(b.bankId)+'"><option value="">Velg ordre</option>'+valg.map(function(o){ return '<option value="'+esc(o.ordre)+'">'+esc(o.ordre+' · '+(o.vippsNavn||o.navn))+'</option>'; }).join('')+'</select></td>'+
+          '<td><button class="btn" type="button" data-koble="'+esc(b.bankId)+'">Koble</button> <button class="lenke" type="button" data-ignorer="'+esc(b.bankId)+'">Ignorer</button></td></tr>';
+      }).join(''):'<tr><td colspan="6" class="tom">Ingen innbetalinger venter på kobling.</td></tr>')+'</tbody>';
+    if(!innstillingerRort) fyllInnstillinger(inn);
+    tegnBank(inn);
+  }
+  var innstillingerRort=false;
+  function fyllInnstillinger(inn){
+    document.querySelectorAll('input[name=betaling]').forEach(function(r){ r.checked=r.value===inn.betaling; });
+    $('iNr').value=inn.nr||''; $('iUtfylt').checked=inn.utfylt!==false;
+    $('iPst').value=String(inn.gebyrProsent||'').replace('.',','); $('iKr').value=String(inn.gebyrKr||'').replace('.',',');
+    $('bedriftStatus').className=inn.bedriftKlar?'ok':'mangler';
+    $('bedriftStatus').textContent=inn.bedriftKlar?('Nøklene er lagt inn'+(inn.vippsEnv==='prod'?'':' (testmiljø)')):'Mangler Vipps-nøkler i Skriptegenskaper';
+    var b=inn.bank||{};
+    $('privatStatus').className=inn.nr&&b.klar?'ok':'mangler';
+    $('privatStatus').textContent=!inn.nr?'Mangler mobilnummer':b.klar?'Banken er koblet til, betalinger finnes automatisk':'Banken er ikke koblet til: betalinger må markeres som betalt for hånd';
+  }
+  function tegnBank(inn){
+    var b=inn.bank||{};
+    $('bRedirect').textContent=(window.VJ_API||'')+'?action=bank';
+    var linjer=[];
+    if(b.feil) linjer.push('⚠️ Tilkoblingen virker ikke lenger. Trykk «Koble til banken» og logg inn med BankID på nytt.');
+    else if(b.klar) linjer.push('✅ Koblet til'+(b.konto?' · konto '+b.konto:'')+(b.sistSjekket?' · sist sjekket '+tid(b.sistSjekket):'')+'.');
+    else if(b.tilkoblet) linjer.push('Koblet til, men ingen konto er valgt. Trykk «Velg konto».');
+    else linjer.push('Ikke koblet til. Lim inn klient-ID og hemmelighet fra developer.sparebank1.no og trykk «Koble til banken».');
+    if(b.utloper) linjer.push('BankID-godkjenningen varer til '+new Date(b.utloper).toLocaleDateString('nb-NO',{dateStyle:'long'})+'.');
+    $('bankStatus').textContent=linjer.join(' ');
+    $('bKlient').placeholder=b.klientId?'Lagret (lim inn for å bytte)':'';
+    $('bHemmelig').placeholder=b.hemmelighet?'Lagret (lim inn for å bytte)':'';
+    if(!$('bFin').value) $('bFin').value=b.finInst||'';
+    $('byttKonto').hidden=!b.tilkoblet; $('testBank').hidden=!b.klar;
+  }
+  function svarBoks(id,tekst,feil){ var el=$(id); el.className='testsvar'+(feil?' feil':''); el.textContent=tekst; el.hidden=!tekst; }
+  function adminKall(params,id){
+    params.okt=okt;
+    return vjPost(params).then(function(d){
+      if(d.utlogget){ visLogin('Du er logget ut. Logg inn på nytt.'); throw new Error('utlogget'); }
+      if(!d.ok){ if(id) svarBoks(id,d.error||'Noe gikk galt',true); throw new Error(d.error||'feil'); }
+      return d;
+    }, function(e){ if(id) svarBoks(id,'Fikk ikke kontakt med backend.',true); throw e; });
   }
   var KOLONNER=[
     ['kilde','Kilde',function(x){return esc(x.kilde)+'<span class="type '+x.type+'">'+TYPE[x.type]+'</span>';}],
@@ -269,6 +422,75 @@ tbody tr:hover{background:#fbf7ee}
       svar.hidden=false; hent();
     }).catch(function(){ b.disabled=false; b.textContent='Lag testkjøp'; svar.className='testsvar feil'; svar.textContent='Fikk ikke kontakt med backend.'; svar.hidden=false; });
   };
+  // Betalingsløsning
+  ['iNr','iPst','iKr','iUtfylt'].forEach(function(id){ $(id).addEventListener('input',function(){ innstillingerRort=true; }); });
+  document.querySelectorAll('input[name=betaling]').forEach(function(r){ r.addEventListener('change',function(){ innstillingerRort=true; }); });
+  $('lagreInnst').onclick=function(){
+    var valgt=document.querySelector('input[name=betaling]:checked'), b=$('lagreInnst');
+    b.disabled=true; b.textContent='Lagrer …';
+    adminKall({action:'innstillinger',lagre:true,betaling:valgt?valgt.value:'bedrift',nr:$('iNr').value,utfylt:$('iUtfylt').checked,
+      gebyrProsent:$('iPst').value,gebyrKr:$('iKr').value},'innstSvar').then(function(d){
+      innstillingerRort=false; data.innstillinger=d.innstillinger; fyllInnstillinger(d.innstillinger);
+      svarBoks('innstSvar','Lagret. Nettsiden bruker nå '+LOSNING[d.innstillinger.betaling]+'.'); hent();
+    }).catch(function(){}).then(function(){ b.disabled=false; b.textContent='Lagre'; });
+  };
+  // Banken
+  $('kobleBank').onclick=function(){
+    var w=window.open('about:blank','_blank'); // åpnes med en gang, ellers stopper nettleseren vinduet
+    adminKall({action:'bankstart',klientId:$('bKlient').value,hemmelighet:$('bHemmelig').value,finInst:$('bFin').value,
+      redirect:(window.VJ_API||'')+'?action=bank'},'bankSvar').then(function(d){
+      $('bKlient').value=''; $('bHemmelig').value='';
+      if(w) w.location.href=d.url; else location.href=d.url;
+      svarBoks('bankSvar','Logg inn med BankID i fanen som åpnet seg. Kom tilbake hit når den sier at banken er koblet til.');
+    }).catch(function(){ if(w) w.close(); });
+  };
+  $('byttKonto').onclick=function(){
+    adminKall({action:'bankkontoer'},'bankSvar').then(function(d){
+      var sel=$('bKonto');
+      sel.innerHTML='<option value="">Velg kontoen Vipps-pengene kommer inn på</option>'+d.kontoer.map(function(k){ return '<option value="'+esc(k.key)+'"'+(k.valgt?' selected':'')+'>'+esc(k.navn+' '+k.nummer)+'</option>'; }).join('');
+      sel.hidden=false; svarBoks('bankSvar','');
+    }).catch(function(){});
+  };
+  $('bKonto').onchange=function(){
+    if(!this.value) return;
+    adminKall({action:'bankkontoer',key:this.value},'bankSvar').then(function(d){
+      data.innstillinger=d.innstillinger; tegnBank(d.innstillinger); fyllInnstillinger(d.innstillinger); svarBoks('bankSvar','Kontoen er valgt.');
+    }).catch(function(){});
+  };
+  $('testBank').onclick=function(){
+    var b=$('testBank'); b.textContent='Sjekker …';
+    adminKall({action:'banktest'},'bankSvar').then(function(d){
+      var s=d.sjekk||{};
+      svarBoks('bankSvar','Banken svarte med '+d.antall+' transaksjoner de siste 7 dagene. '+(s.koblet?s.koblet+' betaling(er) ble koblet til ordre nå. ':'')+
+        (d.eksempler.length?'Under ser du de siste innbetalingene slik banken sender dem. Sjekk at navnet på den som betalte står der.':'Ingen innbetalinger de siste 7 dagene.'));
+      $('bankRaa').textContent=d.eksempler.map(function(x){ return JSON.stringify(x.raa,null,2); }).join('\n\n');
+      $('bankRaa').hidden=!d.eksempler.length; hent();
+    }).catch(function(){}).then(function(){ b.textContent='Test banken'; });
+  };
+  $('kopierRedirect').onclick=function(){
+    var t=$('bRedirect').textContent;
+    (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){ $('kopierRedirect').textContent='Kopiert!'; }).catch(function(){});
+  };
+  // Ventende ordre og innbetalinger: to trykk for å markere som betalt, så det ikke skjer ved et uhell
+  $('ventePanel').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    if(b.dataset.betalt){
+      if(!b.dataset.bekreft){ b.dataset.bekreft='1'; b.textContent='Sikker? Trykk igjen'; setTimeout(function(){ delete b.dataset.bekreft; b.textContent='Marker som betalt'; },5000); return; }
+      b.disabled=true; b.textContent='Sender heftet …';
+      adminKall({action:'koble',ordre:b.dataset.betalt},'venteSvar').then(function(d){ svarBoks('venteSvar',d.ordre+' er betalt, og kunden har fått heftet på e-post.'); hent(); }).catch(function(){ b.disabled=false; b.textContent='Marker som betalt'; });
+    } else if(b.dataset.koble){
+      var sel=document.querySelector('select[data-velg="'+b.dataset.koble+'"]');
+      if(!sel||!sel.value){ svarBoks('venteSvar','Velg ordren betalingen hører til først.',true); return; }
+      b.disabled=true;
+      adminKall({action:'koble',ordre:sel.value,bankId:b.dataset.koble},'venteSvar').then(function(d){ svarBoks('venteSvar','Betalingen er koblet til '+d.ordre+', og kunden har fått heftet.'); hent(); }).catch(function(){ b.disabled=false; });
+    } else if(b.dataset.ignorer){
+      b.disabled=true;
+      adminKall({action:'ignorer',bankId:b.dataset.ignorer},'venteSvar').then(function(){ svarBoks('venteSvar','Innbetalingen er skjult.'); hent(); }).catch(function(){ b.disabled=false; });
+    }
+  });
+  // Kommer du tilbake fra BankID-fanen, hentes ny status
+  var sistFokus=0;
+  window.addEventListener('focus',function(){ if(okt && Date.now()-sistFokus>5000){ sistFokus=Date.now(); hent(); } });
   $('periode').onchange=hent;
   $('oppdater').onclick=hent;
   $('ut').onclick=function(){ vjPost({action:'logout', okt:okt}).catch(function(){}); visLogin(''); };
