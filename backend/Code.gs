@@ -379,7 +379,8 @@ function createPrivat_(p) {
   var site = cfg_('SITE_URL').replace(/\/$/, '');
   var takkUrl = site + '/takk.html?ordre=' + encodeURIComponent(row.ordre) + '&k=' + row.nokkel;
   try { sendBetalingMail_(row, nr, takkUrl); } catch (err) { console.error('Betalings-e-post feilet for ' + row.ordre + ': ' + err); }
-  return { ok: true, ordre: row.ordre, k: row.nokkel, takkUrl: takkUrl, betaling: 'privat' };
+  // Betalingsinfoen følger med, så takkesiden kan vise «Åpne Vipps» med en gang, uten å vente på et nytt kall.
+  return { ok: true, ordre: row.ordre, k: row.nokkel, takkUrl: takkUrl, betaling: 'privat', info: venterSvar_(row) };
 }
 
 function vippsMelding_(ordre) { return 'Juleribbe ' + ordre; }
@@ -399,11 +400,16 @@ function statusPrivat_(o, sjekkBanken) {
     o = findOrder_('ordre', o.data.ordre);
     if (o.data.status === 'BETALT') return betalt(o.data);
   }
-  var nr = privatNr_(), ore = Math.round(Number(o.data.belop) * 100);
+  return venterSvar_(o.data);
+}
+
+/** Det takkesiden trenger for å vise betalingsboksen. Sendes både fra kjøpet og fra statuskallet. */
+function venterSvar_(d) {
+  var nr = privatNr_(), ore = Math.round(Number(d.belop) * 100);
   return {
-    ok: true, status: 'VENTER_BANK', betaling: 'privat', ordre: o.data.ordre, belop: Number(o.data.belop),
-    nr: nr, mottaker: formatPhone_(nr), navn: o.data.vipps_navn || o.data.navn, epost: maskEmail_(o.data.epost),
-    lenke: vippsLenke_(nr, ore, vippsMelding_(o.data.ordre)), melding: vippsMelding_(o.data.ordre),
+    ok: true, status: 'VENTER_BANK', betaling: 'privat', ordre: d.ordre, belop: Number(d.belop),
+    nr: nr, mottaker: formatPhone_(nr), navn: d.vipps_navn || d.navn, epost: maskEmail_(d.epost),
+    lenke: vippsLenke_(nr, ore, vippsMelding_(d.ordre)), melding: vippsMelding_(d.ordre),
     automatisk: bankKlar_()
   };
 }
@@ -1023,13 +1029,13 @@ function sendBetalingMail_(o, nr, takkUrl) {
     '</td></tr>' +
     '<tr><td style="padding:18px 32px 8px;' + sans + ';font-size:17px;line-height:1.6;color:#2a1d17">' +
     '<p style="margin:0 0 14px">Hei ' + escapeHtml_(fornavn) + '!</p>' +
-    '<p style="margin:0">Betal <b>' + kr + ' kr</b> med Vipps til nummeret under. Heftet kommer på e-post så snart betalingen er registrert, vanligvis i løpet av ett minutt.</p>' +
+    '<p style="margin:0">Betal <b>' + kr + ' kr</b> med Vipps til nummeret under. Heftet kommer på e-post så snart betalingen er registrert, vanligvis i løpet av kort tid.</p>' +
     '</td></tr>' +
     '<tr><td align="center" style="padding:24px 32px 8px">' +
     '<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="background:#ff5b24;border-radius:999px">' +
     '<a href="' + escapeHtml_(lenke) + '" style="display:inline-block;padding:15px 34px;' + sans + ';font-size:17px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:999px">Åpne Vipps og betal ' + kr + ' kr</a>' +
     '</td></tr></table>' +
-    '<div style="margin-top:12px;' + sans + ';font-size:14px;color:#6b5a4e">Knappen virker på mobilen. Er du på PC, kan du skanne QR-koden på <a href="' + escapeHtml_(takkUrl) + '" style="color:#9e1b22">betalingssiden</a>.</div>' +
+    '<div style="margin-top:12px;' + sans + ';font-size:14px;color:#6b5a4e">Knappen åpner Vipps med nummeret fylt ut, og så skriver du inn ' + kr + ' kr selv. Er du på PC, kan du skanne QR-koden på <a href="' + escapeHtml_(takkUrl) + '" style="color:#9e1b22">betalingssiden</a>.</div>' +
     '</td></tr>' +
     '<tr><td style="padding:20px 20px 6px">' +
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f1e3;border:1px solid #e6d8bf;border-radius:10px;' + sans + ';font-size:15px;line-height:1.35;color:#2a1d17">' +
@@ -1049,7 +1055,7 @@ function sendBetalingMail_(o, nr, takkUrl) {
     'Betal ' + kr + ' kr med Vipps til ' + formatPhone_(nr) + ', fra Vipps-kontoen til ' + (o.vipps_navn || o.navn) + '.\n\n' +
     'Åpne Vipps (på mobilen): ' + lenke + '\n' +
     'Betalingssiden: ' + takkUrl + '\n\n' +
-    'Heftet kommer på e-post så snart betalingen er registrert, vanligvis i løpet av ett minutt.\n\n' +
+    'Heftet kommer på e-post så snart betalingen er registrert, vanligvis i løpet av kort tid.\n\n' +
     'Ordrenummer: ' + o.ordre + '\n\nHar du spørsmål, kan du svare på denne e-posten.',
     { htmlBody: html, name: cfg_('AVSENDER_NAVN', 'Vegansk juleribbe'), replyTo: cfg_('SVAR_EPOST', '') || undefined });
 }
