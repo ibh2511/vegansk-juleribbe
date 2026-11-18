@@ -1029,7 +1029,7 @@ function sendBetalingMail_(o, nr, takkUrl) {
     '</td></tr>' +
     '<tr><td style="padding:18px 32px 8px;' + sans + ';font-size:17px;line-height:1.6;color:#2a1d17">' +
     '<p style="margin:0 0 14px">Hei ' + escapeHtml_(fornavn) + '!</p>' +
-    '<p style="margin:0">Betal <b>' + kr + ' kr</b> med Vipps til nummeret under. Heftet kommer på e-post så snart betalingen er registrert, vanligvis i løpet av ett minutt.</p>' +
+    '<p style="margin:0">Betal <b>' + kr + ' kr</b> med Vipps til nummeret under. Heftet kommer på e-post så snart betalingen er registrert, vanligvis i løpet av kort tid.</p>' +
     '</td></tr>' +
     '<tr><td align="center" style="padding:24px 32px 8px">' +
     '<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="background:#ff5b24;border-radius:999px">' +
@@ -1055,7 +1055,7 @@ function sendBetalingMail_(o, nr, takkUrl) {
     'Betal ' + kr + ' kr med Vipps til ' + formatPhone_(nr) + ', fra Vipps-kontoen til ' + (o.vipps_navn || o.navn) + '.\n\n' +
     'Åpne Vipps (på mobilen): ' + lenke + '\n' +
     'Betalingssiden: ' + takkUrl + '\n\n' +
-    'Heftet kommer på e-post så snart betalingen er registrert, vanligvis i løpet av ett minutt.\n\n' +
+    'Heftet kommer på e-post så snart betalingen er registrert, vanligvis i løpet av kort tid.\n\n' +
     'Ordrenummer: ' + o.ordre + '\n\nHar du spørsmål, kan du svare på denne e-posten.',
     { htmlBody: html, name: cfg_('AVSENDER_NAVN', 'Vegansk juleribbe'), replyTo: cfg_('SVAR_EPOST', '') || undefined });
 }

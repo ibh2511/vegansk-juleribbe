@@ -79,7 +79,7 @@
     if(privat){ return; }
     var m=vjVipps.miljo(), l=vjVipps.lenker(d.lenke), v=vjVipps.valg(m);
     var kr=d.belop+' kr', nr=String(d.nr||'').replace(/\D/g,'');
-    var naar=d.automatisk?'Siden oppdaterer seg selv når betalingen er kommet, vanligvis i løpet av ett minutt.':'Heftet kommer på e-post så snart betalingen er registrert.';
+    var naar=d.automatisk?'Siden oppdaterer seg selv når betalingen er kommet, vanligvis i løpet av kort tid.':'Heftet kommer på e-post så snart betalingen er registrert.';
     var trinn;
     if(m.mobil){
       trinn='<ol class="trinn">'+
