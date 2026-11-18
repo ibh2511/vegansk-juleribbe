@@ -110,8 +110,11 @@ function vippsLenke_(nr, ore, melding) {
 }
 
 /** Vipps-gebyret for et salg med Vipps bedrift, ut fra satsen i adminpanelet (prosent + kroner per salg). */
+// Vipps bedrift, Nettbetalinger / Checkout: 2,99 % + 1,00 kr per salg. Kan endres i admin.
+var GEBYR_STANDARD = { GEBYR_PROSENT: '2.99', GEBYR_KR: '1' };
+
 function gebyr_(kr) {
-  var tall = function (k) { return Number(String(cfg_(k, '0')).replace(',', '.')) || 0; };
+  var tall = function (k) { return Number(String(cfg_(k, GEBYR_STANDARD[k])).replace(',', '.')) || 0; };
   return Math.round((Number(kr) * tall('GEBYR_PROSENT') / 100 + tall('GEBYR_KR')) * 100) / 100;
 }
 
@@ -1156,7 +1159,7 @@ function innstillinger_() {
   return {
     betaling: betalingsmate_(), bedriftKlar: harVippsNokler_(), vippsEnv: cfg_('VIPPS_ENV', 'test'),
     nr: nr ? formatPhone_(nr) : '', utfylt: cfg_('VIPPS_LENKE_UTFYLT', 'ja') !== 'nei',
-    gebyrProsent: cfg_('GEBYR_PROSENT', ''), gebyrKr: cfg_('GEBYR_KR', ''),
+    gebyrProsent: cfg_('GEBYR_PROSENT', GEBYR_STANDARD.GEBYR_PROSENT), gebyrKr: cfg_('GEBYR_KR', GEBYR_STANDARD.GEBYR_KR),
     bank: {
       klientId: !!cfg_('BANK_CLIENT_ID', ''), hemmelighet: !!cfg_('BANK_CLIENT_SECRET', ''), finInst: cfg_('BANK_FININST', ''),
       tilkoblet: !!cfg_('BANK_REFRESH_TOKEN', ''), klar: bankKlar_(), konto: cfg_('BANK_KONTO_NAVN', ''),
