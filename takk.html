@@ -125,8 +125,11 @@
 
   function planlegg(ms){ clearTimeout(timer); timer=setTimeout(sjekk,ms); }
   function sjekk(){
-    vjGet({action:'status',ordre:ordre,k:k}).then(function(d){
-      if(!d.ok) throw new Error(d.error);
+    // Første kall svarer med en gang. Når betalingsboksen vises, ber siden backend om å spørre banken også.
+    var p={action:'status',ordre:ordre,k:k};
+    if(privat) p.sjekk='1';
+    vjGet(p).then(function(d){
+      if(!d.ok) throw new Error(d.error||'Ukjent feil');
       forsok=0;
       if(d.status==='BETALT') return visBetalt(d);
       if(d.status==='VENTER_BANK'){
@@ -141,10 +144,12 @@
       } else {
         vis('<h1>Betalingen ble avbrutt</h1><p>Ingen penger er trukket. Du kan prøve igjen når du vil.</p><a class="btn" href="./#kjop">Prøv igjen</a>');
       }
-    }).catch(function(){
+    }).catch(function(e){
       if(privat){ planlegg(15000); return; }
-      if(forsok++<5) return planlegg(3000);
-      vis('<h1>Noe gikk galt</h1><p>Vi fikk ikke sjekket betalingen. Har du betalt, får du e-posten innen kort tid. Ellers kan du skrive til <a href="mailto:'+VJ_KONTAKT+'">'+VJ_KONTAKT+'</a> og oppgi ordrenummer '+esc(ordre)+'.</p>');
+      if(forsok++<6) return planlegg(2000+forsok*1000);
+      vis('<h1>Noe gikk galt</h1><p>Vi fikk ikke sjekket betalingen. Har du betalt, får du e-posten innen kort tid. Ellers kan du skrive til <a href="mailto:'+VJ_KONTAKT+'">'+VJ_KONTAKT+'</a> og oppgi ordrenummer '+esc(ordre)+'.</p>'+
+        '<a class="btn" href="javascript:location.reload()">Prøv igjen</a>'+
+        '<p style="margin-top:14px;font-size:13px;color:var(--muted)">Feilmelding: '+esc(e&&e.message||'ukjent')+'</p>');
     });
   }
   // Kunden kommer tilbake fra Vipps-appen: sjekk med en gang i stedet for å vente på neste runde.
