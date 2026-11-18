@@ -151,7 +151,7 @@ function route_(e, body) {
   try {
     switch (p.action) {
       case 'create':   begrens_('create', 30); return json_(createPayment_(p));
-      case 'status':   return json_(checkOrder_(p.ordre, p.k));
+      case 'status':   return json_(checkOrder_(p.ordre, p.k, false, p.sjekk === '1'));
       case 'download': return json_(download_(p.t));
       case 'hit':      begrens_('hit', 300); return json_(hit_(p));
       case 'pris':     begrens_('pris', 300); return json_(prisInfo_());
@@ -275,13 +275,13 @@ function createPayment_(p) {
  * Takkesiden må sende med den hemmelige nøkkelen fra returadressen. Uten den kan ingen
  * gjette seg til andres ordrenummer og få nedlastingslenken deres.
  */
-function checkOrder_(ordre, nokkel, fraUtloser) {
+function checkOrder_(ordre, nokkel, fraUtloser, sjekkBanken) {
   if (!/^(VJ|TEST)-\d{5,}$/.test(ordre || '')) throw new Error('Ugyldig ordrenummer');
   // Vipps privat: ingen betaling å sjekke hos Vipps. Betalingen finnes i banken (se statusPrivat_).
   var forst = findOrder_('ordre', ordre);
   if (forst && forst.data.betaling === 'privat') {
     if (!fraUtloser && !(nokkel && String(nokkel) === String(forst.data.nokkel))) throw new Error('Fant ikke ordren');
-    return statusPrivat_(forst);
+    return statusPrivat_(forst, sjekkBanken);
   }
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
@@ -384,13 +384,18 @@ function createPrivat_(p) {
 
 function vippsMelding_(ordre) { return 'Juleribbe ' + ordre; }
 
-/** Svar til takkesiden for en privat-ordre. Spør banken hvis det er mer enn 20 sekunder siden sist. */
-function statusPrivat_(o) {
+/**
+ * Svar til takkesiden for en privat-ordre. Første kall svarer med en gang, så betalingsboksen vises uten å vente
+ * på banken. Med sjekkBanken spør backend også banken, høyst hvert 20. sekund.
+ */
+function statusPrivat_(o, sjekkBanken) {
   var betalt = function (d) { return { ok: true, status: 'BETALT', betaling: 'privat', epost: maskEmail_(d.epost), token: d.token }; };
   if (o.data.status === 'BETALT') return betalt(o.data);
   if (o.data.status !== 'VENTER_BANK') return { ok: true, status: o.data.status, betaling: 'privat' };
-  if (bankKlar_()) {
-    try { sjekkBankHvisLenge_(20); } catch (err) { console.error('Banksjekk feilet: ' + err); }
+  if (sjekkBanken && bankKlar_()) {
+    var t0 = Date.now();
+    try { sjekkBankHvisLenge_(20); } catch (err) { console.error('Banksjekk feilet etter ' + (Date.now() - t0) + ' ms: ' + err); }
+    if (Date.now() - t0 > 5000) console.warn('Banksjekk tok ' + (Date.now() - t0) + ' ms');
     o = findOrder_('ordre', o.data.ordre);
     if (o.data.status === 'BETALT') return betalt(o.data);
   }
