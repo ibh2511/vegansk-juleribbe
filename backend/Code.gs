@@ -169,6 +169,7 @@ function route_(e, body) {
       case 'koble':      return json_(adminKoble_(p));
       case 'ignorer':    return json_(adminIgnorer_(p));
       case 'vippstest':  begrens_('vippstest', 10); return json_(vippsTest_(p));
+      case 'vippstestliste': begrens_('vippstestliste', 60); return json_(vippsTestListe_());
       default:         return json_({ ok: true, info: 'Vegansk juleribbe API' });
     }
   } catch (err) {
@@ -1421,6 +1422,7 @@ var VTEST_VARIANTER = {
   'vipps-app': 'Bare åpne Vipps-appen'
 };
 var VTEST_SVAR = { ok: '✓ Åpnet med alt utfylt', delvis: '◐ Åpnet, men mangler noe', nei: '✗ Åpnet ikke Vipps' };
+var VTEST_DELER = { nummer: 'nummer', belop: 'beløp', melding: 'melding' };
 var VTEST_STEDER = {
   'iphone-safari': 'iPhone, Safari', 'iphone-instagram': 'iPhone, Instagram', 'iphone-facebook': 'iPhone, Facebook',
   'iphone-messenger': 'iPhone, Messenger', 'iphone-gmail': 'iPhone, Gmail', 'android-chrome': 'Android, Chrome',
@@ -1434,12 +1436,18 @@ function vippsTest_(p) {
   var rent = function (v, maks) { return String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, maks); };
   var sted = VTEST_STEDER[p.stedId];
   if (!sted) throw new Error('Velg hvor du tester fra.');
-  var res = {};
-  try { res = typeof p.res === 'string' ? JSON.parse(p.res) : (p.res || {}); } catch (e) { res = {}; }
+  var tolk = function (v) { try { return (typeof v === 'string' ? JSON.parse(v) : v) || {}; } catch (e) { return {}; } };
+  var res = tolk(p.res), mangler = tolk(p.mangler);
+  // Hva som manglet ved «◐»: bare kjente deler, i fast rekkefølge.
+  var manglerFor = function (id) {
+    var l = Array.isArray(mangler[id]) ? mangler[id] : [];
+    return Object.keys(VTEST_DELER).filter(function (d) { return l.indexOf(d) >= 0; });
+  };
   var linjer = [];
   Object.keys(VTEST_VARIANTER).forEach(function (id) {
-    var s = res[id];
-    linjer.push('- ' + VTEST_VARIANTER[id] + ': ' + (VTEST_SVAR[s] || 'ikke testet'));
+    var s = res[id], m = s === 'delvis' ? manglerFor(id) : [];
+    var tekst = m.length ? '◐ Åpnet, men mangler ' + m.map(function (d) { return VTEST_DELER[d]; }).join(' og ') : (VTEST_SVAR[s] || 'ikke testet');
+    linjer.push('- ' + VTEST_VARIANTER[id] + ': ' + tekst);
   });
   var testet = Object.keys(VTEST_VARIANTER).filter(function (id) { return VTEST_SVAR[res[id]]; });
   if (!testet.length) throw new Error('Merk minst én variant før du sender.');
@@ -1451,13 +1459,31 @@ function vippsTest_(p) {
 
   var oppdaget = rent(p.oppdaget, 80), ua = rent(p.ua, 400), belop = rent(p.belop, 10), melding = rent(p.melding, 50);
   var lagret = {};
-  testet.forEach(function (id) { lagret[id] = res[id]; });
+  testet.forEach(function (id) { var m = res[id] === 'delvis' ? manglerFor(id) : []; lagret[id] = res[id] + (m.length ? ':' + m.join('+') : ''); });
   sheet_(VTEST_ARK).appendRow([new Date().toISOString(), sted + ' (' + p.stedId + ')', oppdaget, JSON.stringify(lagret), belop, melding, ua]);
 
   var tekst = 'Vipps-lenketest fra: ' + sted + '\nSiden oppdaget: ' + oppdaget + '\nBeløp: ' + belop + ' kr, melding: «' + melding + '»\n\n' +
     linjer.join('\n') + '\n\nNettleser-ID: ' + ua;
   var sendt = varsle_('Vipps-lenketest: ' + sted, tekst);
   return { ok: true, sendt: sendt };
+}
+
+/** Hvilke steder som er sendt inn, med siste tidspunkt og hvor mange varianter som åpnet. Ingen nettleser-ID eller annet. */
+function vippsTestListe_() {
+  var steder = {};
+  var ss = SpreadsheetApp.openById(cfg_('SHEET_ID')), sh = ss.getSheetByName(VTEST_ARK);
+  if (sh) sh.getDataRange().getValues().slice(1).forEach(function (r) {
+    var m = String(r[1] || '').match(/\(([a-z-]+)\)$/);
+    if (!m || !VTEST_STEDER[m[1]]) return;
+    var tid = r[0] instanceof Date ? r[0].toISOString() : String(r[0] || '');
+    if (steder[m[1]] && steder[m[1]].tid >= tid) return;
+    var res = {};
+    try { res = JSON.parse(r[3] || '{}'); } catch (e) {}
+    var telling = { ok: 0, delvis: 0, nei: 0 };
+    Object.keys(res).forEach(function (id) { var s = String(res[id]).split(':')[0]; if (telling[s] != null) telling[s]++; });
+    steder[m[1]] = { tid: tid, ok: telling.ok, delvis: telling.delvis, nei: telling.nei };
+  });
+  return { ok: true, steder: steder };
 }
 
 /** Enkel bremse mot misbruk: maks antall kall per minutt for hele løsningen. */

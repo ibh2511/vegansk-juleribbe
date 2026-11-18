@@ -44,9 +44,17 @@ h1{font-size:30px;margin-bottom:6px}
 #sendStatus.ok{color:var(--green);font-weight:700}
 #sendStatus.feil{color:var(--red-dark)}
 textarea{width:100%;min-height:150px;font:13px/1.4 ui-monospace,monospace;border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px}
-ol.miljoer{padding-left:22px;color:var(--ink)}
+ol.miljoer{padding-left:30px;color:var(--ink)}
 ol.miljoer li{margin:6px 0}
 ol.miljoer small{display:block;color:var(--muted);font-size:14px;line-height:1.4}
+.status-sted{display:inline-block;font-size:12.5px;font-weight:700;border-radius:999px;padding:1px 8px;margin-left:6px;background:#efe9dd;color:var(--muted);vertical-align:1px}
+.status-sted.ja{background:#e3efe6;color:var(--green)}
+.status-sted.her{background:#fbeaea;color:var(--red-dark)}
+.fremdrift{font-weight:700;color:var(--green)}
+.mangler{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:14.5px}
+.mangler > span{font-weight:700;margin-right:2px}
+.mangler label{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;min-height:38px;cursor:pointer}
+.mangler input{width:18px;height:18px;margin:0;accent-color:var(--green)}
 details summary{cursor:pointer;font-weight:700}
 .btn{min-height:46px;font-size:16px;padding:10px 18px}
 </style>
@@ -61,6 +69,7 @@ details summary{cursor:pointer;font-weight:700}
     <label for="sted">Hvor tester du fra?</label>
     <select id="sted"></select>
     <p class="hint" id="oppdaget"></p>
+    <p class="hint fremdrift" id="fremdriftTopp" hidden></p>
     <code id="ua"></code>
   </div>
 
@@ -84,7 +93,8 @@ details summary{cursor:pointer;font-weight:700}
 
   <div class="kort">
     <h2 style="font-size:20px">Steder å teste fra</h2>
-    <p class="intro" style="margin:4px 0 8px">Velg stedet øverst på siden hver gang. Hvert sted sendes inn for seg.</p>
+    <p class="intro" style="margin:4px 0 8px">Velg stedet øverst på siden hver gang. Hvert sted sendes inn for seg. Listen viser hva som er sendt inn fra alle telefoner og PC-er.</p>
+    <p class="fremdrift" id="fremdrift" style="margin-bottom:6px"></p>
     <ol class="miljoer" id="stedListe"></ol>
   </div>
 
@@ -139,15 +149,46 @@ details summary{cursor:pointer;font-weight:700}
   var husket=''; try{ husket=sessionStorage.getItem('vj_vippstest_sted')||''; }catch(e){}
   var sted=new URLSearchParams(location.search).get('sted')||husket||gjett();
   if(!STEDER.some(function(s){return s[0]===sted;})) sted=gjett();
-  var res={};
+  var res={}, mangler={}, liste=null;
+  var DELER=[['nummer','Nummer'],['belop','Beløp'],['melding','Melding']];
   function nokkel(){ return 'vj_vippstest_'+sted; }
-  function lastRes(){ try{ res=JSON.parse(les(nokkel(),'{}'))||{}; }catch(e){ res={}; } }
+  function lastRes(){
+    try{ res=JSON.parse(les(nokkel(),'{}'))||{}; }catch(e){ res={}; }
+    try{ mangler=JSON.parse(les('vj_vippstest_mangler_'+sted,'{}'))||{}; }catch(e){ mangler={}; }
+  }
+  // Hva som manglet ved «◐», i fast rekkefølge.
+  function manglerFor(id){ var l=mangler[id]||[]; return DELER.filter(function(d){ return l.indexOf(d[0])>=0; }); }
+  function svarTekst(v){
+    var s=SVAR.filter(function(x){return x[0]===res[v.id];})[0];
+    if(!s) return 'ikke testet';
+    var mm=res[v.id]==='delvis'?manglerFor(v.id):[];
+    return mm.length?'◐ Åpnet, men mangler '+mm.map(function(d){ return d[1].toLowerCase(); }).join(' og '):s[1];
+  }
   function stedNavn(){ return STEDER.filter(function(s){return s[0]===sted;})[0][1]; }
   function plattform(){ return sted.split('-')[0]; }
 
   $('sted').innerHTML=STEDER.map(function(s){ return '<option value="'+s[0]+'">'+esc(s[1])+'</option>'; }).join('');
   $('sted').value=sted;
-  $('stedListe').innerHTML=STEDER.map(function(s){ return '<li><b>'+esc(s[1])+'</b><small>'+esc(s[2])+'</small></li>'; }).join('');
+  // Avkrysning: hvilke steder som er sendt inn, fra alle enheter (hentes fra backend).
+  function tegnListe(){
+    var ferdig=0;
+    $('stedListe').innerHTML=STEDER.map(function(s){
+      var l=liste&&liste[s[0]], merke;
+      if(l){
+        ferdig++;
+        merke='<span class="status-sted ja">✓ Sendt '+esc(new Date(l.tid).toLocaleString('nb-NO',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))+
+          ' · '+l.ok+' ✓ '+l.delvis+' ◐ '+l.nei+' ✗</span>';
+      } else merke='<span class="status-sted">'+(liste?'Ikke testet':'…')+'</span>';
+      if(s[0]===sted) merke+='<span class="status-sted her">Valgt nå</span>';
+      return '<li><b>'+esc(s[1])+'</b>'+merke+'<small>'+esc(s[2])+'</small></li>';
+    }).join('');
+    var t=liste?ferdig+' av '+STEDER.length+' steder er sendt inn.':'';
+    $('fremdrift').textContent=t; $('fremdriftTopp').textContent=t?t+' Se listen nederst.':''; $('fremdriftTopp').hidden=!t;
+  }
+  function hentListe(){
+    if(!window.vjGet) return;
+    vjGet({action:'vippstestliste'}).then(function(d){ if(d&&d.ok){ liste=d.steder||{}; tegnListe(); } }).catch(function(){});
+  }
   $('oppdaget').textContent='Siden tror du tester fra: '+m.tekst+'. Velg riktig sted hvis det ikke stemmer. Gmail kan ikke oppdages, så det må du velge selv.';
   $('ua').textContent=navigator.userAgent;
   try{ $('nr').value=(new URLSearchParams(location.search).get('nr')||les('vj_vippstest_nr','')).replace(/\D/g,'').slice(0,8); }catch(e){}
@@ -170,21 +211,24 @@ details summary{cursor:pointer;font-weight:700}
     $('varianter').innerHTML=synlige().map(function(v){
       var merke=v.type===valg.hoved&&v.belop&&v.melding?'<span class="merke">Takkesiden bruker denne her</span>':v.type===valg.reserve&&v.belop&&v.melding?'<span class="merke reserve">Reserve på takkesiden</span>':'';
       var l=lenke(v), qr=pc?'<div class="qr">'+vjVipps.qrSvg(l)+'</div>':'';
+      var deler=DELER.filter(function(d){ return d[0]==='nummer'||(d[0]==='belop'&&v.belop)||(d[0]==='melding'&&v.melding); });
+      var hva=res[v.id]==='delvis'&&v.type!=='app'?'<div class="mangler" data-m="'+v.id+'"><span>Hva manglet?</span>'+deler.map(function(d){
+        return '<label><input type="checkbox" value="'+d[0]+'"'+((mangler[v.id]||[]).indexOf(d[0])>=0?' checked':'')+'>'+d[1]+'</label>'; }).join('')+'</div>':'';
       return '<div class="kort variant"><h2>'+esc(v.navn)+merke+'</h2><code>'+esc(l)+'</code>'+qr+
         (pc?'':'<a class="proev" href="'+esc(l)+'">Prøv</a>')+
-        '<div class="resultat">'+SVAR.map(function(s){ return '<button type="button" data-v="'+v.id+'" data-s="'+s[0]+'" aria-pressed="'+(res[v.id]===s[0])+'">'+s[1]+'</button>'; }).join('')+'</div></div>';
+        '<div class="resultat">'+SVAR.map(function(s){ return '<button type="button" data-v="'+v.id+'" data-s="'+s[0]+'" aria-pressed="'+(res[v.id]===s[0])+'">'+s[1]+'</button>'; }).join('')+'</div>'+hva+'</div>';
     }).join('');
-    oppsummer(); visStatus();
+    oppsummer(); visStatus(); tegnListe();
   }
   function oppsummer(){
     var linjer=['Vipps-lenketest: '+stedNavn()+' (siden oppdaget: '+m.tekst+')','Beløp: '+$('kr').value+' kr, melding: «'+$('melding').value+'»'];
-    synlige().forEach(function(v){ var s=SVAR.filter(function(x){return x[0]===res[v.id];})[0]; linjer.push('- '+v.navn+': '+(s?s[1]:'ikke testet')); });
+    synlige().forEach(function(v){ linjer.push('- '+v.navn+': '+svarTekst(v)); });
     linjer.push('Nettleser-ID: '+navigator.userAgent);
     $('sammendrag').value=linjer.join('\n');
   }
 
   // Innsending. Husker hva som sist ble sendt fra hvert sted, så siden kan si om noe er endret siden.
-  function tilstand(){ return JSON.stringify(synlige().map(function(v){ return res[v.id]||''; })); }
+  function tilstand(){ return JSON.stringify(synlige().map(function(v){ return (res[v.id]||'')+(res[v.id]==='delvis'?':'+manglerFor(v.id).map(function(d){ return d[0]; }).join('+'):''); })); }
   function sistSendt(){ return les('vj_vippstest_sendt_'+sted,''); }
   function visStatus(tekst,klasse){
     var s=$('sendStatus');
@@ -200,10 +244,12 @@ details summary{cursor:pointer;font-weight:700}
     if(!synlige().some(function(v){ return res[v.id]; })){ visStatus('Merk minst én variant først.','feil'); return; }
     sender=true; $('sendInn').disabled=true; visStatus('Sender …');
     var t=tilstand();
-    vjPost({action:'vippstest',stedId:sted,oppdaget:m.tekst,ua:navigator.userAgent,res:JSON.stringify(res),belop:$('kr').value,melding:$('melding').value})
+    vjPost({action:'vippstest',stedId:sted,oppdaget:m.tekst,ua:navigator.userAgent,res:JSON.stringify(res),mangler:JSON.stringify(mangler),belop:$('kr').value,melding:$('melding').value})
       .then(function(d){
         if(!d||!d.ok) throw new Error(d&&d.error||'Ukjent feil');
         skriv('vj_vippstest_sendt_'+sted,t);
+        if(liste) liste[sted]={tid:new Date().toISOString(),ok:0,delvis:0,nei:0};
+        hentListe();
         if(d.sendt) visStatus(); else visStatus('Lagret i regnearket, men backend har ingen e-postadresse å sende til. Legg inn VARSEL_EPOST i Skriptegenskaper.','feil');
       })
       .catch(function(e){ visStatus('Fikk ikke sendt: '+e.message+' Bruk «Kopier resultatene» nederst.','feil'); })
@@ -213,6 +259,9 @@ details summary{cursor:pointer;font-weight:700}
   function autoSend(){
     clearTimeout(autoTimer);
     if(!synlige().every(function(v){ return res[v.id]; }) || sistSendt()===tilstand()) return;
+    // Vent til det er krysset av for hva som manglet ved hver «◐».
+    var uten=synlige().filter(function(v){ return res[v.id]==='delvis'&&v.type!=='app'&&!manglerFor(v.id).length; });
+    if(uten.length){ visStatus('Kryss av for hva som manglet, så sendes resultatene.'); return; }
     autoTimer=setTimeout(send,1500);
   }
 
@@ -222,6 +271,13 @@ details summary{cursor:pointer;font-weight:700}
     res[b.dataset.v]=b.dataset.s; skriv(nokkel(),JSON.stringify(res));
     tegn(); autoSend();
   });
+  $('varianter').addEventListener('change',function(e){
+    var boks=e.target.closest('.mangler'); if(!boks) return;
+    mangler[boks.dataset.m]=[].slice.call(boks.querySelectorAll('input:checked')).map(function(i){ return i.value; });
+    skriv('vj_vippstest_mangler_'+sted,JSON.stringify(mangler));
+    oppsummer(); visStatus(); autoSend();
+  });
+  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') hentListe(); });
   $('sted').addEventListener('change',function(){ sted=$('sted').value; try{ sessionStorage.setItem('vj_vippstest_sted',sted); }catch(e){} lastRes(); tegn(); });
   ['nr','kr','melding'].forEach(function(id){ $(id).addEventListener('input',function(){ skriv('vj_vippstest_nr',$('nr').value); tegn(); }); });
   $('sendInn').onclick=send;
@@ -234,7 +290,7 @@ details summary{cursor:pointer;font-weight:700}
     vjVipps.kopier($('sammendrag').value).then(function(){ $('kopier').textContent='Kopiert!'; setTimeout(function(){ $('kopier').textContent='Kopier resultatene'; },2500); })
       .catch(function(){ $('sammendrag').select(); });
   };
-  tegn();
+  tegn(); hentListe();
 })();
 </script>
 </body>
