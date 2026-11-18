@@ -103,6 +103,8 @@ Med `VIPPS_ENV=test`:
 3. Gjør ett ekte kjøp selv og refunder det i Vipps-portalen.
 4. Fyll inn foretaksnavn, adresse og e-post i `vilkar.html`, `personvern.html` og bunnteksten på forsiden.
 
+**Feilsøking av Vipps bedrift:** Får kundene «Vi fikk ikke kontakt med Vipps», trykker du **Test Vipps bedrift** under Betalingsløsning i adminpanelet. Den lager en betaling på 1 kr, avbryter den med en gang, og viser hva Vipps svarte. Den vanligste årsaken er at nøklene er fra produksjon mens `VIPPS_ENV` ikke er satt til `prod`. Da står det «(testmiljø)» i adminpanelet. Når et kjøp feiler, får du også en e-post med feilmeldingen fra Vipps (høyst én i timen), og ordren får status FEILET.
+
 ## 9. Vipps privat (betaling til mobilnummer)
 
 I adminpanelet under **Betalingsløsning** velger du mellom:

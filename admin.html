@@ -183,6 +183,8 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
       </div>
       <div data-for="bedrift">
         <p class="hint" id="gebyrSats"></p>
+        <p class="hint">Får kundene «Vi fikk ikke kontakt med Vipps»? <button class="lenke" type="button" id="testVipps">Test Vipps bedrift</button> lager en betaling på 1 kr og avbryter den med en gang, og sier hva som er galt.</p>
+        <p class="testsvar" id="vippsSvar" hidden></p>
       </div>
       <div class="lag"><button class="btn" type="button" id="lagreInnst">Lagre</button></div>
       <p class="testsvar" id="innstSvar" hidden></p>
@@ -495,6 +497,11 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
     adminKall({action:'bankkontoer',key:this.value},'bankSvar').then(function(d){
       data.innstillinger=d.innstillinger; tegnBank(d.innstillinger); fyllInnstillinger(d.innstillinger); svarBoks('bankSvar','Kontoen er valgt.');
     }).catch(function(){});
+  };
+  $('testVipps').onclick=function(){
+    var b=$('testVipps'); b.disabled=true; b.textContent='Tester …';
+    adminKall({action:'vippssjekk'},'vippsSvar').then(function(d){ svarBoks('vippsSvar',d.melding); })
+      .catch(function(){}).then(function(){ b.disabled=false; b.textContent='Test Vipps bedrift'; });
   };
   $('testBank').onclick=function(){
     var b=$('testBank'); b.textContent='Sjekker …';

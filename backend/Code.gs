@@ -166,6 +166,7 @@ function route_(e, body) {
       case 'bankstart':  return json_(adminBankStart_(p));
       case 'bankkontoer': return json_(adminBankKontoer_(p));
       case 'banktest':   return json_(adminBankTest_(p));
+      case 'vippssjekk': return json_(adminVippsSjekk_(p));
       case 'koble':      return json_(adminKoble_(p));
       case 'ignorer':    return json_(adminIgnorer_(p));
       case 'vippstest':  begrens_('vippstest', 10); return json_(vippsTest_(p));
@@ -257,16 +258,32 @@ function createPayment_(p) {
   } finally { lock.releaseLock(); }
 
   var site = cfg_('SITE_URL').replace(/\/$/, '');
-  var res = vipps_('post', '/epayment/v1/payments', {
-    amount: { currency: 'NOK', value: row.belop * 100 },
-    paymentMethod: { type: 'WALLET' },
-    reference: ordre,
-    userFlow: 'WEB_REDIRECT',
-    // retur=vipps: kunden kommer fra Vipps etter å ha betalt, så takkesiden skriver «Sjekker betalingen …»
-    returnUrl: site + '/takk.html?ordre=' + encodeURIComponent(ordre) + '&k=' + row.nokkel + '&retur=vipps',
-    paymentDescription: 'Vegansk juleribbe – oppskriftshefte (PDF)',
-    profile: { scope: 'name phoneNumber email' }
-  }, 'create-' + ordre);
+  var res;
+  try {
+    res = vipps_('post', '/epayment/v1/payments', {
+      amount: { currency: 'NOK', value: Math.round(row.belop * 100) },
+      paymentMethod: { type: 'WALLET' },
+      reference: ordre,
+      userFlow: 'WEB_REDIRECT',
+      // retur=vipps: kunden kommer fra Vipps etter å ha betalt, så takkesiden skriver «Sjekker betalingen …»
+      returnUrl: site + '/takk.html?ordre=' + encodeURIComponent(ordre) + '&k=' + row.nokkel + '&retur=vipps',
+      paymentDescription: 'Vegansk juleribbe – oppskriftshefte (PDF)',
+      profile: { scope: 'name phoneNumber email' }
+    }, 'create-' + ordre);
+  } catch (err) {
+    // Kunden ser bare «Vi fikk ikke kontakt med Vipps». Du får feilen på e-post, høyst én gang i timen.
+    console.error('Vipps bedrift feilet for ' + ordre + ': ' + err);
+    var o = findOrder_('ordre', ordre);
+    if (o) updateOrder_(o.row, { status: 'FEILET' });
+    var cache = CacheService.getScriptCache();
+    if (!cache.get('vipps_feil_varslet')) {
+      cache.put('vipps_feil_varslet', '1', 3600);
+      varsle_('Vipps bedrift virker ikke', 'En kunde prøvde å kjøpe, men Vipps svarte med en feil, så kunden kom ikke videre til betaling.\n\n' +
+        vippsFeilForklart_(String(err.message || err)) + '\n\nFeilmelding fra Vipps: ' + String(err.message || err).slice(0, 1500) +
+        '\n\nI adminpanelet kan du trykke «Test Vipps bedrift» under Betalingsløsning, eller bytte til Vipps privat så lenge.');
+    }
+    throw err;
+  }
 
   return { ok: true, ordre: ordre, redirectUrl: res.redirectUrl };
 }
@@ -1302,6 +1319,48 @@ function testEpost_(type, p) {
   } catch (err) { sendt = false; console.error('Test-e-post feilet: ' + err); }
   return { ok: true, type: type, epost: epost, epostSendt: sendt,
     melding: sendt ? '«' + TEST_EPOSTER[type] + '» er sendt til ' + epost + ', merket [TEST].' : 'E-posten kunne ikke sendes. Se Kjøringer i Apps Script.' };
+}
+
+/** Gjør en feil fra Vipps om til noe du kan gjøre noe med. */
+function vippsFeilForklart_(melding) {
+  var prod = cfg_('VIPPS_ENV', 'test') === 'prod';
+  if (/token feilet/i.test(melding)) {
+    return 'Vipps godtok ikke nøklene. Backend bruker ' + (prod ? 'produksjonsmiljøet (VIPPS_ENV = prod)' : 'testmiljøet, fordi VIPPS_ENV ikke er satt til prod') + '. ' +
+      (prod ? 'Sjekk at VIPPS_CLIENT_ID, VIPPS_CLIENT_SECRET og VIPPS_SUBSCRIPTION_KEY er limt inn riktig, uten mellomrom, fra produksjonsnøklene i portal.vipps.no.'
+            : 'Er nøklene fra produksjon (portal.vipps.no etter at avtalen ble godkjent), må VIPPS_ENV i Skriptegenskaper settes til prod.');
+  }
+  if (/→ 401|→ 403/.test(melding)) return 'Vipps sier at salgsstedet ikke har tilgang. Sjekk at VIPPS_MSN er salgsstedsnummeret fra portal.vipps.no, og at salgsstedet har tilgang til ePayment-API-et.';
+  if (/profile|userinfo|scope/i.test(melding)) return 'Vipps lar ikke salgsstedet be om navn, telefon og e-post fra kunden. Be Vipps om å slå på profildeling (userinfo) for salgsstedet.';
+  if (/→ 400/.test(melding)) return 'Vipps avviste betalingen. Feilmeldingen sier hva som var galt.';
+  return 'Vipps svarte ikke som forventet.';
+}
+
+/**
+ * «Test Vipps bedrift» i admin: henter nøkkel, lager en betaling på 1 kr og avbryter den med en gang.
+ * Ingen penger trekkes, men det viser om nøkler, salgsstedsnummer og profildeling er i orden.
+ */
+function adminVippsSjekk_(p) {
+  try { sjekkOkt_(p.okt); } catch (e) { return { ok: false, error: e.message, utlogget: true }; }
+  begrens_('vippssjekk', 5);
+  var miljo = cfg_('VIPPS_ENV', 'test') === 'prod' ? 'prod' : 'test';
+  if (!harVippsNokler_()) return { ok: false, error: 'Mangler Vipps-nøkler i Skriptegenskaper (VIPPS_CLIENT_ID, VIPPS_CLIENT_SECRET, VIPPS_SUBSCRIPTION_KEY, VIPPS_MSN).' };
+  var steg = 'nokkel';
+  try {
+    CacheService.getScriptCache().remove('vipps_token');
+    vippsToken_();
+    steg = 'betaling';
+    var ref = 'TEST-' + nyNokkel_(12);
+    vipps_('post', '/epayment/v1/payments', {
+      amount: { currency: 'NOK', value: 100 }, paymentMethod: { type: 'WALLET' }, reference: ref, userFlow: 'WEB_REDIRECT',
+      returnUrl: cfg_('SITE_URL').replace(/\/$/, '') + '/admin.html', paymentDescription: 'Test fra adminpanelet (avbrytes med en gang)',
+      profile: { scope: 'name phoneNumber email' }
+    }, 'sjekk-' + ref);
+    try { vipps_('post', '/epayment/v1/payments/' + ref + '/cancel', null, 'avbryt-' + ref); } catch (err) { console.warn('Avbryt testbetaling: ' + err); }
+    return { ok: true, miljo: miljo, melding: 'Vipps bedrift virker (' + (miljo === 'prod' ? 'produksjon' : 'testmiljø') + '). Nøklene ble godtatt, og en testbetaling på 1 kr ble laget og avbrutt med en gang.' };
+  } catch (err) {
+    var m = String(err.message || err);
+    return { ok: false, miljo: miljo, steg: steg, error: (steg === 'nokkel' ? 'Fikk ikke nøkkel fra Vipps. ' : 'Vipps avviste testbetalingen. ') + vippsFeilForklart_(m) + ' (' + m.slice(0, 400) + ')' };
+  }
 }
 
 /* ---- Betalingsløsning og bank (adminpanelet) ---- */
