@@ -953,11 +953,12 @@ function sendMail_(to, navn, ordre, token, belop) {
     '<div style="margin-top:12px;' + sans + ';font-size:14px;color:#6b5a4e">Lenken virker i ' + dager + ' dager.</div>' +
     '</td></tr>' +
     // Ordredetaljer
-    '<tr><td style="padding:24px 32px 6px">' +
-    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f1e3;border:1px solid #e6d8bf;border-radius:10px;' + sans + ';font-size:15px;color:#2a1d17">' +
-    '<tr><td style="padding:14px 18px 6px;color:#6b5a4e">Ordrenummer</td><td align="right" style="padding:14px 18px 6px;font-weight:bold">' + ordre + '</td></tr>' +
-    '<tr><td style="padding:6px 18px;color:#6b5a4e">Produkt</td><td align="right" style="padding:6px 18px">Heftet som PDF</td></tr>' +
-    '<tr><td style="padding:6px 18px 14px;color:#6b5a4e;border-top:1px solid #e6d8bf">Betalt</td><td align="right" style="padding:6px 18px 14px;font-weight:bold;border-top:1px solid #e6d8bf">' + kr + ' kr</td></tr>' +
+    // Lite luft og ingen linjeskift, slik at hver opplysning holder seg på én linje på mobil
+    '<tr><td style="padding:20px 20px 6px">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f1e3;border:1px solid #e6d8bf;border-radius:10px;' + sans + ';font-size:15px;line-height:1.35;color:#2a1d17">' +
+    '<tr><td style="padding:9px 12px 4px;color:#6b5a4e;white-space:nowrap">Ordrenummer</td><td align="right" style="padding:9px 12px 4px;font-weight:bold;white-space:nowrap">' + ordre + '</td></tr>' +
+    '<tr><td style="padding:4px 12px 8px;color:#6b5a4e;white-space:nowrap">Produkt</td><td align="right" style="padding:4px 12px 8px;white-space:nowrap">Heftet som PDF</td></tr>' +
+    '<tr><td style="padding:8px 12px 9px;color:#6b5a4e;border-top:1px solid #e6d8bf;white-space:nowrap">Betalt</td><td align="right" style="padding:8px 12px 9px;font-weight:bold;border-top:1px solid #e6d8bf;white-space:nowrap">' + kr + ' kr</td></tr>' +
     '</table></td></tr>' +
     // Hilsen: en rolig linje og signaturen, med en liten gullstjerne over
     '<tr><td align="center" style="padding:32px 32px 36px;text-align:center">' +
@@ -1000,9 +1001,11 @@ function sendBetalingMail_(o, nr, takkUrl) {
   var lenke = vippsLenke_(nr, Math.round(kr * 100), vippsMelding_(o.ordre));
   var serif = "font-family:'Playfair Display',Georgia,'Times New Roman',serif";
   var sans = "font-family:'Source Sans 3','Segoe UI',Arial,sans-serif";
-  var rad = function (etikett, verdi, stor) {
-    return '<tr><td style="padding:10px 18px;color:#6b5a4e;border-top:1px solid #e6d8bf">' + etikett + '</td>' +
-      '<td align="right" style="padding:10px 18px;border-top:1px solid #e6d8bf;font-weight:bold;' + (stor ? 'font-size:20px;letter-spacing:1px' : '') + '">' + verdi + '</td></tr>';
+  // Lite luft og ingen linjeskift, slik at hver opplysning holder seg på én linje på mobil. Bare navnet får bryte hvis det er langt.
+  var rad = function (etikett, verdi, forste, kanBrytes) {
+    var kant = forste ? '' : 'border-top:1px solid #e6d8bf;';
+    return '<tr><td style="padding:8px 12px;color:#6b5a4e;white-space:nowrap;' + kant + '">' + etikett + '</td>' +
+      '<td align="right" style="padding:8px 12px;font-weight:bold;' + kant + (kanBrytes ? '' : 'white-space:nowrap;') + '">' + verdi + '</td></tr>';
   };
   var html =
     '<!doctype html><html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
@@ -1028,11 +1031,11 @@ function sendBetalingMail_(o, nr, takkUrl) {
     '</td></tr></table>' +
     '<div style="margin-top:12px;' + sans + ';font-size:14px;color:#6b5a4e">Knappen virker på mobilen. Er du på PC, kan du skanne QR-koden på <a href="' + escapeHtml_(takkUrl) + '" style="color:#9e1b22">betalingssiden</a>.</div>' +
     '</td></tr>' +
-    '<tr><td style="padding:24px 32px 6px">' +
-    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f1e3;border:1px solid #e6d8bf;border-radius:10px;' + sans + ';font-size:15px;color:#2a1d17">' +
-    '<tr><td style="padding:12px 18px;color:#6b5a4e">Vipps til</td><td align="right" style="padding:12px 18px;font-weight:bold;font-size:20px;letter-spacing:1px">' + formatPhone_(nr) + '</td></tr>' +
+    '<tr><td style="padding:20px 20px 6px">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f1e3;border:1px solid #e6d8bf;border-radius:10px;' + sans + ';font-size:15px;line-height:1.35;color:#2a1d17">' +
+    rad('Vipps til', '<span style="font-size:16px">' + formatPhone_(nr) + '</span>', true) +
     rad('Beløp', kr + ' kr') +
-    rad('Fra Vipps-kontoen til', escapeHtml_(o.vipps_navn || o.navn)) +
+    rad('Fra Vipps-konto', escapeHtml_(o.vipps_navn || o.navn), false, true) +
     rad('Ordrenummer', o.ordre) +
     '</table></td></tr>' +
     '<tr><td style="padding:18px 32px 30px;' + sans + ';font-size:15px;line-height:1.6;color:#6b5a4e">' +
