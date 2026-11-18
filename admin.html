@@ -121,7 +121,7 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
 
     <div class="panel">
       <h2>Salg per betalingsløsning</h2>
-      <p class="hint">Gebyret er det Vipps tar for Vipps bedrift. Vipps privat har ikke gebyr.</p>
+      <p class="hint">Gebyr gjelder bare Vipps bedrift. Med Vipps privat går hele beløpet til kontoen.</p>
       <div class="tabell"><table id="perBetaling"></table></div>
       <p class="hint" id="gebyrHint" style="margin:10px 0 0" hidden></p>
     </div>
@@ -174,17 +174,19 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
       <p class="hint">Velg hvordan kundene betaler. Byttet gjelder med en gang på nettsiden.</p>
       <div class="valg">
         <label class="valgkort"><input type="radio" name="betaling" value="bedrift"><b>Vipps bedrift</b><span>Betaling på nett med Vipps-avtalen. Kunden godkjenner i Vipps og får heftet med en gang. Vipps tar et gebyr per salg.</span><em id="bedriftStatus"></em></label>
-        <label class="valgkort"><input type="radio" name="betaling" value="privat"><b>Vipps privat</b><span>Kunden vippser til mobilnummeret under. Backend finner betalingen i banken på navn og beløp og sender heftet.</span><em id="privatStatus"></em></label>
+        <label class="valgkort"><input type="radio" name="betaling" value="privat"><b>Vipps privat</b><span>Kunden vippser til mobilnummeret under, uten gebyr. Backend finner betalingen i banken på navn og beløp og sender heftet.</span><em id="privatStatus"></em></label>
       </div>
-      <div class="felt-rad">
+      <div class="felt-rad" data-for="privat">
         <label>Mobilnummer kundene vippser til<input id="iNr" inputmode="numeric" maxlength="15" placeholder="912 34 567" autocomplete="off"></label>
         <label class="hake"><input type="checkbox" id="iUtfylt">Fyll ut beløp og melding i Vipps-lenken</label>
       </div>
-      <div class="felt-rad">
-        <label>Vipps-gebyr i prosent<input id="iPst" inputmode="decimal" placeholder="f.eks. 2,99" autocomplete="off"></label>
-        <label>Fast gebyr per salg (kr)<input id="iKr" inputmode="decimal" placeholder="f.eks. 1" autocomplete="off"></label>
+      <div data-for="bedrift">
+        <div class="felt-rad">
+          <label>Gebyr for Vipps bedrift, i prosent<input id="iPst" inputmode="decimal" placeholder="2,99" autocomplete="off"></label>
+          <label>Fast gebyr per salg med Vipps bedrift (kr)<input id="iKr" inputmode="decimal" placeholder="1" autocomplete="off"></label>
+        </div>
+        <p class="hint">Satsen fra avtalen din er 2,99 % + 1 kr. Den lagres på hvert nye salg med Vipps bedrift, og brukes også for eldre salg som ikke har lagret gebyr.</p>
       </div>
-      <p class="hint">Gebyrsatsen står i avtalen din på portal.vippsmobilepay.com. Den lagres på hvert nye salg med Vipps bedrift, og brukes også for eldre salg som ikke har lagret gebyr.</p>
       <div class="lag"><button class="btn" type="button" id="lagreInnst">Lagre</button></div>
       <p class="testsvar" id="innstSvar" hidden></p>
     </div>
@@ -281,11 +283,11 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
   function tegnBetaling(){
     var pb=data.perBetaling||{bedrift:{salg:0,omsetning:0,gebyr:0,netto:0},privat:{salg:0,omsetning:0,gebyr:0,netto:0}};
     var inn=data.innstillinger||{bank:{}}, aktiv=inn.betaling||'bedrift';
-    var rad=function(navn,x,ekstra){ return '<tr'+(ekstra||'')+'><td>'+navn+'</td><td>'+x.salg+'</td><td>'+kr2(x.omsetning)+'</td><td>'+kr2(x.gebyr)+'</td><td>'+kr2(x.netto)+'</td></tr>'; };
+    var rad=function(navn,x,ekstra,utenGebyr){ return '<tr'+(ekstra||'')+'><td>'+navn+'</td><td>'+x.salg+'</td><td>'+kr2(x.omsetning)+'</td><td>'+(utenGebyr?'<span class="hint">Ingen</span>':kr2(x.gebyr))+'</td><td>'+kr2(x.netto)+'</td></tr>'; };
     var sum={salg:pb.bedrift.salg+pb.privat.salg,omsetning:pb.bedrift.omsetning+pb.privat.omsetning,gebyr:pb.bedrift.gebyr+pb.privat.gebyr,netto:pb.bedrift.netto+pb.privat.netto};
     $('perBetaling').innerHTML='<thead><tr><th>Løsning</th><th>Salg</th><th>Omsetning</th><th>Gebyr</th><th>Netto</th></tr></thead><tbody>'+
       rad('Vipps bedrift'+(aktiv==='bedrift'?'<span class="chip">I bruk</span>':''),pb.bedrift)+
-      rad('Vipps privat'+(aktiv==='privat'?'<span class="chip">I bruk</span>':''),pb.privat)+
+      rad('Vipps privat'+(aktiv==='privat'?'<span class="chip">I bruk</span>':''),pb.privat,'',true)+
       rad('Totalt',sum,' class="sum"')+'</tbody>';
     var harSats=inn.gebyrProsent||inn.gebyrKr;
     $('gebyrHint').hidden=!!harSats || !pb.bedrift.salg;
@@ -310,8 +312,14 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
     tegnBank(inn);
   }
   var innstillingerRort=false;
+  // Viser bare feltene som hører til valgt løsning: mobilnummer for privat, gebyr for bedrift.
+  function visFelter(){
+    var v=(document.querySelector('input[name=betaling]:checked')||{}).value||'bedrift';
+    document.querySelectorAll('#innstillingerPanel [data-for]').forEach(function(el){ el.hidden=el.dataset.for!==v; });
+  }
   function fyllInnstillinger(inn){
     document.querySelectorAll('input[name=betaling]').forEach(function(r){ r.checked=r.value===inn.betaling; });
+    visFelter();
     $('iNr').value=inn.nr||''; $('iUtfylt').checked=inn.utfylt!==false;
     $('iPst').value=String(inn.gebyrProsent||'').replace('.',','); $('iKr').value=String(inn.gebyrKr||'').replace('.',',');
     $('bedriftStatus').className=inn.bedriftKlar?'ok':'mangler';
@@ -424,7 +432,7 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
   };
   // Betalingsløsning
   ['iNr','iPst','iKr','iUtfylt'].forEach(function(id){ $(id).addEventListener('input',function(){ innstillingerRort=true; }); });
-  document.querySelectorAll('input[name=betaling]').forEach(function(r){ r.addEventListener('change',function(){ innstillingerRort=true; }); });
+  document.querySelectorAll('input[name=betaling]').forEach(function(r){ r.addEventListener('change',function(){ innstillingerRort=true; visFelter(); }); });
   $('lagreInnst').onclick=function(){
     var valgt=document.querySelector('input[name=betaling]:checked'), b=$('lagreInnst');
     b.disabled=true; b.textContent='Lagrer …';
