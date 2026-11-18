@@ -262,7 +262,8 @@ function createPayment_(p) {
     paymentMethod: { type: 'WALLET' },
     reference: ordre,
     userFlow: 'WEB_REDIRECT',
-    returnUrl: site + '/takk.html?ordre=' + encodeURIComponent(ordre) + '&k=' + row.nokkel,
+    // retur=vipps: kunden kommer fra Vipps etter å ha betalt, så takkesiden skriver «Sjekker betalingen …»
+    returnUrl: site + '/takk.html?ordre=' + encodeURIComponent(ordre) + '&k=' + row.nokkel + '&retur=vipps',
     paymentDescription: 'Vegansk juleribbe – oppskriftshefte (PDF)',
     profile: { scope: 'name phoneNumber email' }
   }, 'create-' + ordre);
