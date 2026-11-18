@@ -52,7 +52,7 @@
 <div class="band" aria-hidden="true"></div>
 <main>
   <div class="box" id="boks">
-    <h1>Sjekker betalingen …</h1>
+    <h1>Henter ordren din …</h1>
     <div class="spinner"></div>
     <p>Dette tar bare noen sekunder.</p>
   </div>
@@ -86,12 +86,12 @@
         '<li><span class="nr">1</span><div><b>Kopier mobilnummeret</b><div class="kopier"><span class="tlf">'+esc(d.mottaker)+'</span><button class="knapp-liten" type="button" id="kopier">Kopier</button></div></div></li>'+
         '<li><span class="nr">2</span><div><b>Åpne Vipps</b><a class="btn vipps" id="aapne" href="'+esc(l[v.hoved])+'">Åpne Vipps</a>'+
           '<a class="reserve" href="'+esc(l[v.reserve])+'">Åpnet ikke Vipps? Prøv denne lenken</a></div></li>'+
-        '<li><span class="nr">3</span><div><b>Betal '+esc(kr)+'</b><small>Nummer og beløp er som regel fylt ut allerede. Hvis ikke, limer du inn nummeret og skriver '+esc(kr)+'.</small></div></li>'+
+        '<li><span class="nr">3</span><div><b>Skriv inn '+esc(kr)+' og betal</b><small>Nummeret er fylt ut, men beløpet skriver du selv. Mangler nummeret, limer du det inn fra steg 1.</small></div></li>'+
         '<li><span class="nr">4</span><div><b>Kom tilbake hit</b><small>'+naar+'</small></div></li>'+
       '</ol>';
     } else {
       var svg=vjVipps.qrSvg(d.lenke);
-      trinn=(svg?'<div class="qr">'+svg+'<div><b>Skann QR-koden med kameraet på mobilen</b><small style="display:block;color:var(--muted);margin-top:6px">Da åpnes Vipps med nummer og beløp fylt ut. Betal, så dukker heftet opp her.</small></div></div>':'')+
+      trinn=(svg?'<div class="qr">'+svg+'<div><b>Skann QR-koden med kameraet på mobilen</b><small style="display:block;color:var(--muted);margin-top:6px">Da åpnes Vipps med nummeret fylt ut. Skriv inn '+esc(kr)+' og betal, så dukker heftet opp her.</small></div></div>':'')+
         '<ol class="trinn">'+
         '<li class="enkel"><div><b>'+(svg?'Eller betal selv i Vipps på mobilen':'Betal i Vipps på mobilen')+'</b>'+
           '<div class="kopier"><span class="tlf">'+esc(d.mottaker)+'</span><button class="knapp-liten" type="button" id="kopier">Kopier</button></div>'+
@@ -166,7 +166,7 @@
   }
   // Kunden kommer tilbake fra Vipps-appen: sjekk med en gang i stedet for å vente på neste runde.
   document.addEventListener('visibilitychange',function(){
-    if(document.visibilityState==='visible' && privat){ var t=document.getElementById('venterTekst'); if(t) t.textContent='Sjekker betalingen …'; planlegg(300); setTimeout(function(){ if(t) t.textContent='Venter på betalingen …'; },4000); }
+    if(document.visibilityState==='visible' && privat){ var t=document.getElementById('venterTekst'); if(t) t.textContent='Ser om betalingen har kommet …'; planlegg(300); setTimeout(function(){ if(t) t.textContent='Venter på betalingen …'; },4000); }
   });
   // Kommer kunden rett fra kjøpet, har forsiden lagt igjen betalingsinfoen. Da vises «Åpne Vipps» med en gang.
   var lagret=null;

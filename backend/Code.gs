@@ -1035,7 +1035,7 @@ function sendBetalingMail_(o, nr, takkUrl) {
     '<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="background:#ff5b24;border-radius:999px">' +
     '<a href="' + escapeHtml_(lenke) + '" style="display:inline-block;padding:15px 34px;' + sans + ';font-size:17px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:999px">Åpne Vipps og betal ' + kr + ' kr</a>' +
     '</td></tr></table>' +
-    '<div style="margin-top:12px;' + sans + ';font-size:14px;color:#6b5a4e">Knappen virker på mobilen. Er du på PC, kan du skanne QR-koden på <a href="' + escapeHtml_(takkUrl) + '" style="color:#9e1b22">betalingssiden</a>.</div>' +
+    '<div style="margin-top:12px;' + sans + ';font-size:14px;color:#6b5a4e">Knappen åpner Vipps med nummeret fylt ut, og så skriver du inn ' + kr + ' kr selv. Er du på PC, kan du skanne QR-koden på <a href="' + escapeHtml_(takkUrl) + '" style="color:#9e1b22">betalingssiden</a>.</div>' +
     '</td></tr>' +
     '<tr><td style="padding:20px 20px 6px">' +
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f1e3;border:1px solid #e6d8bf;border-radius:10px;' + sans + ';font-size:15px;line-height:1.35;color:#2a1d17">' +
