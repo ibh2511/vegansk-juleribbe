@@ -212,6 +212,7 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
 
     <div class="panel">
       <h2>Test</h2>
+      <p class="hint" id="epostKvote" hidden></p>
       <div class="test">
         <select id="tType" aria-label="Hva skal testes">
           <option value="kjop">Helt testkjøp (lager en ordre, nedlastingen virker)</option>
@@ -330,6 +331,8 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
     if(!innstillingerRort) fyllInnstillinger(inn);
     if(!$('tEpost').value && inn.varselEpost) $('tEpost').value=inn.varselEpost; // din egen adresse som forslag
     visTestlenke(inn.testlenke);
+    if(inn.epostIgjen!=null){ $('epostKvote').hidden=false;
+      $('epostKvote').textContent='E-poster backend kan sende nå: '+inn.epostIgjen+' av 100 per døgn. Er det 30 eller færre igjen, sendes bare kvitteringer og varsler, ikke betalingsinfo.'; }
     tegnBank(inn);
   }
   var innstillingerRort=false;

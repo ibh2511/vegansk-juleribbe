@@ -214,7 +214,7 @@ function route_(e, body) {
       case 'logout':   return json_(adminLogout_(p.okt));
       case 'nullstill': return json_(adminNullstill_(p.okt, p.angre));
       case 'testkjop': return json_(adminTestkjop_(p));
-      case 'resend':   return json_(resend_(p.epost));
+      case 'resend':   begrens_('resend', 20); return json_(resend_(p.epost));
       case 'navn':     begrens_('navn', 30); return json_(endreVippsNavn_(p));
       case 'innstillinger': return json_(adminInnstillinger_(p));
       case 'bankstart':  return json_(adminBankStart_(p));
@@ -404,6 +404,7 @@ function checkOrder_(ordre, nokkel, fraUtloser, sjekkBanken) {
 
 /** Tidsstyrt utløser (hvert 5. minutt): fullfører ordre der kunden lukket Vipps før retur. */
 function pollPending() {
+  try { sendManglendeKvitteringer_(); } catch (err) { console.error(err); }
   var sh = sheet_(ORDRE_ARK);
   var vals = sh.getDataRange().getValues();
   var grense = Date.now() - 2 * 36e5;
@@ -451,7 +452,9 @@ function createPrivat_(p) {
 
   var site = cfg_('SITE_URL').replace(/\/$/, '');
   var takkUrl = site + '/takk.html?ordre=' + encodeURIComponent(row.ordre) + '&k=' + row.nokkel;
-  try { sendBetalingMail_(row, nr, takkUrl); } catch (err) { console.error('Betalings-e-post feilet for ' + row.ordre + ': ' + err); }
+  if (kanSendeBetalingsinfo_(row.epost)) {
+    try { sendBetalingMail_(row, nr, takkUrl); } catch (err) { console.error('Betalings-e-post feilet for ' + row.ordre + ': ' + err); }
+  }
   // Betalingsinfoen følger med, så takkesiden kan vise «Åpne Vipps» med en gang, uten å vente på et nytt kall.
   return { ok: true, ordre: row.ordre, k: row.nokkel, takkUrl: takkUrl, betaling: 'privat', info: venterSvar_(row) };
 }
@@ -585,6 +588,55 @@ function kroner_(kr) {
 }
 
 /** Ordren er betalt: lager nedlastingslenke og sender kvitteringen. bankId er transaksjonen, eller tom ved manuell kobling. */
+/* ---- E-postkvoten ---- */
+
+// En vanlig Gmail-konto kan sende til 100 mottakere i døgnet. Kvitteringene er viktigst, så betalingsinfoen
+// (som takkesiden uansett viser) sendes bare når det er mer enn dette igjen.
+var EPOST_RESERVE = 30;
+
+function epostIgjen_() {
+  try { return MailApp.getRemainingDailyQuota(); } catch (e) { return 100; }
+}
+
+function kanSendeBetalingsinfo_(epost) {
+  if (epostIgjen_() <= EPOST_RESERVE) { console.warn('Betalingsinfo ikke sendt: lite igjen av e-postkvoten'); return false; }
+  // Samme adresse som trykker kjøp flere ganger på rad, får bare én e-post (takkesiden viser den nyeste ordren).
+  var cache = CacheService.getScriptCache(), k = 'betinfo_' + String(epost).slice(0, 120);
+  if (cache.get(k)) return false;
+  cache.put(k, '1', 600);
+  return true;
+}
+
+/**
+ * Kvitteringer som ikke kom ut, for eksempel fordi e-postkvoten var brukt opp, sendes på nytt.
+ * Kjøres fra utløserne, høyst hvert 10. minutt. Hver ordre prøves høyst 5 ganger, de siste 3 døgnene.
+ */
+function sendManglendeKvitteringer_() {
+  var cache = CacheService.getScriptCache();
+  if (cache.get('kvittering_sjekket')) return 0;
+  cache.put('kvittering_sjekket', '1', 600);
+  if (epostIgjen_() < 1) return 0;
+  var vals = sheet_(ORDRE_ARK).getDataRange().getValues(), O = {}; ORDRE_KOLONNER.forEach(function (k, i) { O[k] = i; });
+  var grense = Date.now() - 3 * 864e5, sendt = 0;
+  for (var i = 1; i < vals.length && sendt < 10; i++) {
+    var r = vals[i];
+    if (r[O.status] !== 'BETALT' || r[O.epost_sendt] || !r[O.epost] || !r[O.token]) continue;
+    if (!(new Date(r[O.betalt]).getTime() > grense)) continue;
+    var fk = 'kvittering_forsok_' + r[O.ordre], n = Number(cache.get(fk) || 0);
+    if (n >= 5) continue;
+    cache.put(fk, String(n + 1), 6 * 3600);
+    try {
+      sendMail_(String(r[O.epost]), r[O.navn], r[O.ordre], r[O.token], r[O.belop]);
+      updateOrder_(i + 1, { epost_sendt: new Date() });
+      sendt++;
+    } catch (err) {
+      console.error('Kvitteringen feilet igjen for ' + r[O.ordre] + ': ' + err);
+      if (epostIgjen_() < 1) break;
+    }
+  }
+  return sendt;
+}
+
 function markerPrivatBetalt_(o, bankId) {
   var token = nyNokkel_(40);
   var dager = Number(cfg_('LENKE_DAGER', '7'));
@@ -881,6 +933,7 @@ function sjekkBank_() {
  * så kjøretiden holder seg langt under Googles grense. Fornyer også tilgangen én gang i døgnet.
  */
 function sjekkBankUtloser() {
+  try { sendManglendeKvitteringer_(); } catch (err) { console.error(err); }
   if (!cfg_('BANK_REFRESH_TOKEN', '')) return;
   var props = PropertiesService.getScriptProperties();
   var sist = new Date(props.getProperty('BANK_SIST_FORNYET') || 0).getTime();
@@ -964,12 +1017,24 @@ function resend_(epost) {
   var cache = CacheService.getScriptCache();
   if (cache.get('resend_' + epost)) return { ok: true };
   cache.put('resend_' + epost, '1', 600);
-  var o = findOrder_('epost', epost, true);
-  if (o && o.data.status === 'BETALT') {
+  // Den siste betalte ordren, selv om kunden har trykket kjøp igjen etterpå uten å betale.
+  var vals = sheet_(ORDRE_ARK).getDataRange().getValues(), O = {}; ORDRE_KOLONNER.forEach(function (k, i) { O[k] = i; });
+  var o = null;
+  for (var i = vals.length - 1; i >= 1 && !o; i--) {
+    if (String(vals[i][O.epost]).toLowerCase() === epost && vals[i][O.status] === 'BETALT') {
+      o = { row: i + 1, data: {} };
+      ORDRE_KOLONNER.forEach(function (k, j) { o.data[k] = vals[i][j]; });
+    }
+  }
+  if (o) {
     var dager = Number(cfg_('LENKE_DAGER', '7'));
     var token = nyNokkel_(40);
-    updateOrder_(o.row, { token: token, nedlastinger: 0, utloper: new Date(Date.now() + dager * 864e5) });
-    sendMail_(o.data.epost, o.data.navn, o.data.ordre, token, o.data.belop);
+    // Den gamle lenken byttes ut først når den nye er sendt. Feiler sendingen, svarer vi likevel likt,
+    // så svaret ikke avslører hvem som har kjøpt.
+    try {
+      sendMail_(o.data.epost, o.data.navn, o.data.ordre, token, o.data.belop);
+      updateOrder_(o.row, { token: token, nedlastinger: 0, utloper: new Date(Date.now() + dager * 864e5), epost_sendt: new Date() });
+    } catch (err) { console.error('Ny lenke feilet for ' + o.data.ordre + ': ' + err); }
   }
   return { ok: true };
 }
@@ -1424,7 +1489,7 @@ function innstillinger_() {
     betaling: betalingsmate_(), bedriftKlar: harVippsNokler_(), vippsEnv: cfg_('VIPPS_ENV', 'test'),
     nr: nr ? formatPhone_(nr) : '', utfylt: cfg_('VIPPS_LENKE_UTFYLT', 'ja') !== 'nei',
     gebyrProsent: String(GEBYR_PROSENT), gebyrKr: String(GEBYR_KR),
-    varselEpost: varselEpost_(), testlenke: testlenkeInfo_(),
+    varselEpost: varselEpost_(), testlenke: testlenkeInfo_(), epostIgjen: epostIgjen_(),
     bank: {
       klientId: !!cfg_('BANK_CLIENT_ID', ''), hemmelighet: !!cfg_('BANK_CLIENT_SECRET', ''), finInst: cfg_('BANK_FININST', ''),
       tilkoblet: !!cfg_('BANK_REFRESH_TOKEN', ''), klar: bankKlar_(), konto: cfg_('BANK_KONTO_NAVN', ''),
@@ -1721,7 +1786,7 @@ function vippsTest_(p) {
   var oppdaget = rent(p.oppdaget, 80), ua = rent(p.ua, 400), belop = rent(p.belop, 10), melding = rent(p.melding, 50);
   var lagret = {};
   testet.forEach(function (id) { var m = res[id] === 'delvis' ? manglerFor(id) : []; lagret[id] = res[id] + (m.length ? ':' + m.join('+') : ''); });
-  sheet_(VTEST_ARK).appendRow([new Date().toISOString(), sted + ' (' + p.stedId + ')', oppdaget, JSON.stringify(lagret), belop, melding, ua]);
+  sheet_(VTEST_ARK).appendRow([new Date().toISOString(), sted + ' (' + p.stedId + ')', oppdaget, JSON.stringify(lagret), belop, melding, ua].map(celle_));
 
   var tekst = 'Vipps-lenketest fra: ' + sted + '\nSiden oppdaget: ' + oppdaget + '\nBeløp: ' + belop + ' kr, melding: «' + melding + '»\n\n' +
     linjer.join('\n') + '\n\nNettleser-ID: ' + ua;
