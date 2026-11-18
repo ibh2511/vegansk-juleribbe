@@ -585,17 +585,52 @@ function bankFrakoblet_(melding) {
   props.setProperty('BANK_FEIL', new Date().toISOString() + ' ' + melding);
   if (props.getProperty('BANK_VARSLET_FEIL')) return;
   props.setProperty('BANK_VARSLET_FEIL', '1');
-  varsle_('Banken må kobles til på nytt',
-    'Backend fikk ikke lenger lese innbetalinger fra SpareBank 1. Gå til adminpanelet, trykk «Koble til banken» og logg inn med BankID.\n\n' +
-    'Til det er gjort, må Vipps-betalinger kobles til ordre for hånd i adminpanelet.\n\nFeilmelding: ' + melding);
+  var v = varselFrakoblet_(melding);
+  varsle_(v.emne, v.tekst);
 }
 
-/** E-post til deg (VARSEL_EPOST, ellers SVAR_EPOST). Gir true hvis e-posten ble sendt. */
-function varsle_(emne, tekst) {
-  var til = cfg_('VARSEL_EPOST', '') || cfg_('SVAR_EPOST', '');
+/** E-post til deg (VARSEL_EPOST, ellers SVAR_EPOST). Gir true hvis e-posten ble sendt. Testen i admin sender til en annen adresse. */
+function varsle_(emne, tekst, til, test) {
+  til = til || varselEpost_();
   if (!til) return false;
-  try { MailApp.sendEmail(til, 'Vegansk juleribbe: ' + emne, tekst + '\n\nAdmin: ' + cfg_('SITE_URL', '').replace(/\/$/, '') + '/admin.html'); return true; }
+  try { MailApp.sendEmail(til, (test ? '[TEST] ' : '') + 'Vegansk juleribbe: ' + emne, tekst + '\n\nAdmin: ' + cfg_('SITE_URL', '').replace(/\/$/, '') + '/admin.html'); return true; }
   catch (err) { console.error('Varsel feilet: ' + err); return false; }
+}
+
+function varselEpost_() { return cfg_('VARSEL_EPOST', '') || cfg_('SVAR_EPOST', ''); }
+
+/* ---- Tekstene i varslene. Egne funksjoner, så testen i admin sender nøyaktig det samme. ---- */
+
+function varselFrakoblet_(melding) {
+  return { emne: 'Banken må kobles til på nytt', tekst:
+    'Backend fikk ikke lenger lese innbetalinger fra SpareBank 1. Gå til adminpanelet, trykk «Koble til banken» og logg inn med BankID.\n\n' +
+    'Til det er gjort, må Vipps-betalinger kobles til ordre for hånd i adminpanelet.\n\nFeilmelding: ' + melding };
+}
+
+function varselUtloper_(utloper) {
+  return { emne: 'Banktilgangen går snart ut', tekst:
+    'Tilgangen til SpareBank 1 går ut ' + Utilities.formatDate(new Date(utloper), Session.getScriptTimeZone(), 'd. MMMM yyyy') +
+    '. Gå til adminpanelet, trykk «Koble til banken» og logg inn med BankID, så varer den på nytt.' };
+}
+
+function varselFeilBelop_(t, kunde) {
+  return { emne: 'Betaling med feil beløp (' + kroner_(t.belop) + ')', tekst:
+    'Det har kommet ' + kroner_(t.belop) + ' fra ' + (t.navn || 'en kunde') + (t.dato ? ' (' + t.dato + ')' : '') + '. ' +
+    'Den ser ut til å høre til ordre ' + kunde.data.ordre + ' fra ' + (kunde.data.vipps_navn || kunde.data.navn) +
+    ', som koster ' + kroner_(kunde.data.belop) + '.\n\n' +
+    'Betalinger med feil beløp kobles ikke automatisk, så kunden har ikke fått heftet ennå. ' +
+    'I adminpanelet, under «Innbetalinger som ikke ble koblet», kan du trykke «Koble» for å sende heftet, eller «Ignorer». ' +
+    'Kunden har e-post ' + kunde.data.epost + ' hvis du vil be om resten av beløpet.' };
+}
+
+function varselIkkeKoblet_(t, flere, samme) {
+  return { emne: 'Betaling som ikke ble koblet (' + kroner_(t.belop) + ')', tekst:
+    'Det har kommet ' + kroner_(t.belop) + ' fra ' + (t.navn || 'ukjent') + (t.dato ? ' (' + t.dato + ')' : '') + ', ' +
+    (flere ? 'men flere ventende ordre har samme navn og beløp.' : 'men navnet passer ikke med noen ventende ordre.') + '\n\n' +
+    (samme.length ? 'Ordre som venter på ' + kroner_(t.belop) + ':\n' + samme.map(function (o) {
+      return '· ' + o.data.ordre + ': ' + (o.data.vipps_navn || o.data.navn) + ' (' + o.data.epost + ')';
+    }).join('\n') + '\n\n' : 'Ingen ordre venter på dette beløpet.\n\n') +
+    'I adminpanelet, under «Innbetalinger som ikke ble koblet», velger du ordren og trykker «Koble», så får kunden heftet. Gjelder den ikke heftet, trykker du «Ignorer».' };
 }
 
 function bankGet_(path, query) {
@@ -741,13 +776,8 @@ function sjekkBank_() {
         if (feilSett[nokkel]) { lagre(t, 'DUPLIKAT', kunde.data.ordre); return; } // samme betaling igjen (reservert, så bokført)
         feilSett[nokkel] = 1;
         lagre(t, 'FEIL_BELOP', kunde.data.ordre);
-        varsle_('Betaling med feil beløp (' + kroner_(t.belop) + ')',
-          'Det har kommet ' + kroner_(t.belop) + ' fra ' + (t.navn || 'en kunde') + (t.dato ? ' (' + t.dato + ')' : '') + '. ' +
-          'Den ser ut til å høre til ordre ' + kunde.data.ordre + ' fra ' + (kunde.data.vipps_navn || kunde.data.navn) +
-          ', som koster ' + kroner_(kunde.data.belop) + '.\n\n' +
-          'Betalinger med feil beløp kobles ikke automatisk, så kunden har ikke fått heftet ennå. ' +
-          'I adminpanelet, under «Innbetalinger som ikke ble koblet», kan du trykke «Koble» for å sende heftet, eller «Ignorer». ' +
-          'Kunden har e-post ' + kunde.data.epost + ' hvis du vil be om resten av beløpet.');
+        var vf = varselFeilBelop_(t, kunde);
+        varsle_(vf.emne, vf.tekst);
         return;
       }
       var treff = finnOrdreForBetaling_(t, ventende), status = 'UMATCHET', ordre = '', kandidater = ventende.slice();
@@ -766,13 +796,8 @@ function sjekkBank_() {
       lagre(t, status, ordre);
       if (status === 'UMATCHET') {
         var samme = kandidater.filter(function (o) { return ore_(o.data.belop) === ore_(t.belop); });
-        varsle_('Betaling som ikke ble koblet (' + kroner_(t.belop) + ')',
-          'Det har kommet ' + kroner_(t.belop) + ' fra ' + (t.navn || 'ukjent') + (t.dato ? ' (' + t.dato + ')' : '') + ', ' +
-          (treff === 'FLERE' ? 'men flere ventende ordre har samme navn og beløp.' : 'men navnet passer ikke med noen ventende ordre.') + '\n\n' +
-          (samme.length ? 'Ordre som venter på ' + kroner_(t.belop) + ':\n' + samme.map(function (o) {
-            return '· ' + o.data.ordre + ': ' + (o.data.vipps_navn || o.data.navn) + ' (' + o.data.epost + ')';
-          }).join('\n') + '\n\n' : 'Ingen ordre venter på dette beløpet.\n\n') +
-          'I adminpanelet, under «Innbetalinger som ikke ble koblet», velger du ordren og trykker «Koble», så får kunden heftet. Gjelder den ikke heftet, trykker du «Ignorer».');
+        var vi = varselIkkeKoblet_(t, treff === 'FLERE', samme);
+        varsle_(vi.emne, vi.tekst);
       }
     });
     return { ok: true, transaksjoner: trans.length, nye: nye, koblet: koblet };
@@ -793,9 +818,8 @@ function sjekkBankUtloser() {
   var utloper = props.getProperty('BANK_REFRESH_UTLOPER');
   if (utloper && new Date(utloper).getTime() - Date.now() < 14 * 864e5 && !props.getProperty('BANK_VARSLET_UTLOP')) {
     props.setProperty('BANK_VARSLET_UTLOP', '1');
-    varsle_('Banktilgangen går snart ut',
-      'Tilgangen til SpareBank 1 går ut ' + Utilities.formatDate(new Date(utloper), Session.getScriptTimeZone(), 'd. MMMM yyyy') +
-      '. Gå til adminpanelet, trykk «Koble til banken» og logg inn med BankID, så varer den på nytt.');
+    var v = varselUtloper_(utloper);
+    varsle_(v.emne, v.tekst);
   }
   if (Date.now() > Number(props.getProperty('BANK_VENTER_TIL') || 0) || !bankKlar_()) return;
   CacheService.getScriptCache().put('bank_sist', '1', 20);
@@ -991,7 +1015,7 @@ function pdfStr_(s) {
 /* E-post                                                              */
 /* ------------------------------------------------------------------ */
 
-function sendMail_(to, navn, ordre, token, belop) {
+function sendMail_(to, navn, ordre, token, belop, test) {
   if (!to) return;
   var link = cfg_('SITE_URL').replace(/\/$/, '') + '/last-ned.html?t=' + token;
   var fornavn = String(navn || '').split(' ')[0] || 'du';
@@ -1058,7 +1082,7 @@ function sendMail_(to, navn, ordre, token, belop) {
     'Spørsmål? Bare svar på denne e-posten.</div>' +
     '</td></tr>' +
     '</table></td></tr></table></body></html>';
-  MailApp.sendEmail(to, 'Heftet ditt: Vegansk juleribbe (' + ordre + ')',
+  MailApp.sendEmail(to, (test ? '[TEST] ' : '') + 'Heftet ditt: Vegansk juleribbe (' + ordre + ')',
     // Full tekstversjon ved siden av HTML: e-post med bare en kort tekstdel havner lettere i søppelpost
     'Hei ' + fornavn + '!\n\n' +
     'Takk for kjøpet. Her er heftet ditt med oppskriften på vegansk juleribbe med sprø, stekt svor.\n\n' +
@@ -1073,7 +1097,7 @@ function sendMail_(to, navn, ordre, token, belop) {
 }
 
 /** Vipps privat: e-post med betalingsinfo rett etter at kunden har bestilt. Kvitteringen kommer når betalingen er funnet. */
-function sendBetalingMail_(o, nr, takkUrl) {
+function sendBetalingMail_(o, nr, takkUrl, test) {
   if (!o.epost) return;
   var fornavn = String(o.navn || '').split(' ')[0] || 'du';
   var kr = Number(o.belop);
@@ -1123,7 +1147,7 @@ function sendBetalingMail_(o, nr, takkUrl) {
     '<tr><td style="background:#9e1b22;border-top:2px solid #c8a04a;font-size:0;line-height:0;height:6px">&nbsp;</td></tr>' +
     '<tr><td style="background:#2a1d17;color:#b8a690;padding:16px 32px;' + sans + ';font-size:12px;line-height:1.6;text-align:center">Spørsmål? Bare svar på denne e-posten.</td></tr>' +
     '</table></td></tr></table></body></html>';
-  MailApp.sendEmail(o.epost, 'Betal med Vipps: Vegansk juleribbe (' + o.ordre + ')',
+  MailApp.sendEmail(o.epost, (test ? '[TEST] ' : '') + 'Betal med Vipps: Vegansk juleribbe (' + o.ordre + ')',
     'Hei ' + fornavn + '!\n\n' +
     'Betal ' + kr + ' kr med Vipps til ' + formatPhone_(nr) + ', fra Vipps-kontoen til ' + (o.vipps_navn || o.navn) + '.\n\n' +
     'Åpne Vipps (på mobilen): ' + lenke + '\n' +
@@ -1210,6 +1234,7 @@ function adminNullstill_(okt, angre) {
 function adminTestkjop_(p) {
   try { sjekkOkt_(p.okt); } catch (e) { return { ok: false, error: e.message, utlogget: true }; }
   begrens_('testkjop', 10);
+  if (p.type && p.type !== 'kjop') return testEpost_(p.type, p);
   var epost = String(p.epost || '').trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(epost)) return { ok: false, error: 'Skriv inn en gyldig e-postadresse' };
   var props = PropertiesService.getScriptProperties();
@@ -1239,6 +1264,46 @@ function adminTestkjop_(p) {
     takkUrl: site + '/takk.html?ordre=' + encodeURIComponent(row.ordre) + '&k=' + row.nokkel };
 }
 
+/**
+ * Sender én av e-postene som test, uten å lage en ordre. Innholdet er det samme som kundene og du får,
+ * med [TEST] i emnet og eksempelverdier. Nedlastingslenken i kvitteringen virker ikke (bruk testkjøp for det).
+ */
+var TEST_EPOSTER = {
+  betaling: 'Betalingsinfo (Vipps privat)',
+  kvittering: 'Kvittering med nedlastingslenke',
+  feilbelop: 'Varsel til deg: betaling med feil beløp',
+  ikkekoblet: 'Varsel til deg: betaling som ikke ble koblet',
+  utloper: 'Varsel til deg: banktilgangen går snart ut',
+  frakoblet: 'Varsel til deg: banken må kobles til på nytt'
+};
+function testEpost_(type, p) {
+  if (!TEST_EPOSTER[type]) return { ok: false, error: 'Ukjent e-posttype' };
+  var epost = String(p.epost || '').trim().toLowerCase().slice(0, 120);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(epost)) return { ok: false, error: 'Skriv inn en gyldig e-postadresse' };
+  var navn = String(p.navn || '').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Test Testesen';
+  var kr = prisOre_() / 100, site = cfg_('SITE_URL').replace(/\/$/, '');
+  var o = { ordre: 'TEST-EPOST', navn: navn, vipps_navn: navn, epost: epost, belop: kr };
+  var idag = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  var sendt = true, v = null;
+  try {
+    if (type === 'betaling') {
+      var nr = privatNr_();
+      if (nr.length !== 8) return { ok: false, error: 'Legg inn mobilnummeret for Vipps privat først' };
+      sendBetalingMail_(o, nr, site + '/takk.html?ordre=TEST-EPOST', true);
+    } else if (type === 'kvittering') {
+      sendMail_(epost, navn, o.ordre, 'test-e-post', kr, true);
+    } else {
+      if (type === 'feilbelop') v = varselFeilBelop_({ belop: 14.9, navn: navn, dato: idag }, { data: o });
+      if (type === 'ikkekoblet') v = varselIkkeKoblet_({ belop: kr, navn: 'Kris Olsen', dato: idag }, false, [{ data: o }]);
+      if (type === 'utloper') v = varselUtloper_(new Date(Date.now() + 13 * 864e5));
+      if (type === 'frakoblet') v = varselFrakoblet_('invalid_grant (eksempel)');
+      sendt = varsle_(v.emne, v.tekst, epost, true);
+    }
+  } catch (err) { sendt = false; console.error('Test-e-post feilet: ' + err); }
+  return { ok: true, type: type, epost: epost, epostSendt: sendt,
+    melding: sendt ? '«' + TEST_EPOSTER[type] + '» er sendt til ' + epost + ', merket [TEST].' : 'E-posten kunne ikke sendes. Se Kjøringer i Apps Script.' };
+}
+
 /* ---- Betalingsløsning og bank (adminpanelet) ---- */
 
 /** Innstillingene adminpanelet viser. Hemmeligheter sendes aldri tilbake, bare om de er lagt inn. */
@@ -1248,6 +1313,7 @@ function innstillinger_() {
     betaling: betalingsmate_(), bedriftKlar: harVippsNokler_(), vippsEnv: cfg_('VIPPS_ENV', 'test'),
     nr: nr ? formatPhone_(nr) : '', utfylt: cfg_('VIPPS_LENKE_UTFYLT', 'ja') !== 'nei',
     gebyrProsent: cfg_('GEBYR_PROSENT', GEBYR_STANDARD.GEBYR_PROSENT), gebyrKr: cfg_('GEBYR_KR', GEBYR_STANDARD.GEBYR_KR),
+    varselEpost: varselEpost_(),
     bank: {
       klientId: !!cfg_('BANK_CLIENT_ID', ''), hemmelighet: !!cfg_('BANK_CLIENT_SECRET', ''), finInst: cfg_('BANK_FININST', ''),
       tilkoblet: !!cfg_('BANK_REFRESH_TOKEN', ''), klar: bankKlar_(), konto: cfg_('BANK_KONTO_NAVN', ''),
