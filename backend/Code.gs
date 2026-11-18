@@ -54,6 +54,7 @@ function prisInfo_() {
 var ORDRE_ARK = 'Ordrer';
 var BESOK_ARK = 'Besøk';
 var BANK_ARK = 'Bank';
+var VTEST_ARK = 'Vippstest';
 // betaling: «bedrift» eller «privat». gebyr: Vipps-gebyret i kroner for salget (bare bedrift).
 // bank_id: transaksjonen i banken som betalte ordren. vipps_navn: navnet kunden betaler fra i Vipps.
 var ORDRE_KOLONNER = ['ordre', 'opprettet', 'status', 'navn', 'epost', 'telefon', 'token',
@@ -62,6 +63,7 @@ var ORDRE_KOLONNER = ['ordre', 'opprettet', 'status', 'navn', 'epost', 'telefon'
 var BESOK_KOLONNER = ['tid', 'side', 'kilde', 'utm_source', 'utm_campaign', 'enhet', 'besokende', 'partner'];
 // Innbetalinger fra banken som har samme beløp som heftet. Andre innbetalinger lagres ikke.
 var BANK_KOLONNER = ['sett', 'bank_id', 'dato', 'belop', 'navn', 'tekst', 'type', 'bokforing', 'status', 'ordre'];
+var VTEST_KOLONNER = ['tid', 'sted', 'oppdaget', 'resultater', 'belop', 'melding', 'ua'];
 var CTA_NAVN = ['hero', 'sticky', 'final'];
 
 /* ------------------------------------------------------------------ */
@@ -108,13 +110,16 @@ function vippsLenke_(nr, ore, melding) {
 }
 
 /** Vipps-gebyret for et salg med Vipps bedrift, ut fra satsen i adminpanelet (prosent + kroner per salg). */
+// Vipps bedrift, Nettbetalinger / Checkout: 2,99 % + 1,00 kr per salg. Kan endres i admin.
+var GEBYR_STANDARD = { GEBYR_PROSENT: '2.99', GEBYR_KR: '1' };
+
 function gebyr_(kr) {
-  var tall = function (k) { return Number(String(cfg_(k, '0')).replace(',', '.')) || 0; };
+  var tall = function (k) { return Number(String(cfg_(k, GEBYR_STANDARD[k])).replace(',', '.')) || 0; };
   return Math.round((Number(kr) * tall('GEBYR_PROSENT') / 100 + tall('GEBYR_KR')) * 100) / 100;
 }
 
 function sheet_(name) {
-  var kol = name === ORDRE_ARK ? ORDRE_KOLONNER : name === BESOK_ARK ? BESOK_KOLONNER : BANK_KOLONNER;
+  var kol = name === ORDRE_ARK ? ORDRE_KOLONNER : name === BESOK_ARK ? BESOK_KOLONNER : name === VTEST_ARK ? VTEST_KOLONNER : BANK_KOLONNER;
   var ss = SpreadsheetApp.openById(cfg_('SHEET_ID'));
   var sh = ss.getSheetByName(name);
   if (!sh) {
@@ -163,6 +168,7 @@ function route_(e, body) {
       case 'banktest':   return json_(adminBankTest_(p));
       case 'koble':      return json_(adminKoble_(p));
       case 'ignorer':    return json_(adminIgnorer_(p));
+      case 'vippstest':  begrens_('vippstest', 10); return json_(vippsTest_(p));
       default:         return json_({ ok: true, info: 'Vegansk juleribbe API' });
     }
   } catch (err) {
@@ -533,12 +539,12 @@ function bankFrakoblet_(melding) {
     'Til det er gjort, må Vipps-betalinger kobles til ordre for hånd i adminpanelet.\n\nFeilmelding: ' + melding);
 }
 
-/** E-post til deg (VARSEL_EPOST, ellers SVAR_EPOST). */
+/** E-post til deg (VARSEL_EPOST, ellers SVAR_EPOST). Gir true hvis e-posten ble sendt. */
 function varsle_(emne, tekst) {
   var til = cfg_('VARSEL_EPOST', '') || cfg_('SVAR_EPOST', '');
-  if (!til) return;
-  try { MailApp.sendEmail(til, 'Vegansk juleribbe: ' + emne, tekst + '\n\nAdmin: ' + cfg_('SITE_URL', '').replace(/\/$/, '') + '/admin.html'); }
-  catch (err) { console.error('Varsel feilet: ' + err); }
+  if (!til) return false;
+  try { MailApp.sendEmail(til, 'Vegansk juleribbe: ' + emne, tekst + '\n\nAdmin: ' + cfg_('SITE_URL', '').replace(/\/$/, '') + '/admin.html'); return true; }
+  catch (err) { console.error('Varsel feilet: ' + err); return false; }
 }
 
 function bankGet_(path, query) {
@@ -1153,7 +1159,7 @@ function innstillinger_() {
   return {
     betaling: betalingsmate_(), bedriftKlar: harVippsNokler_(), vippsEnv: cfg_('VIPPS_ENV', 'test'),
     nr: nr ? formatPhone_(nr) : '', utfylt: cfg_('VIPPS_LENKE_UTFYLT', 'ja') !== 'nei',
-    gebyrProsent: cfg_('GEBYR_PROSENT', ''), gebyrKr: cfg_('GEBYR_KR', ''),
+    gebyrProsent: cfg_('GEBYR_PROSENT', GEBYR_STANDARD.GEBYR_PROSENT), gebyrKr: cfg_('GEBYR_KR', GEBYR_STANDARD.GEBYR_KR),
     bank: {
       klientId: !!cfg_('BANK_CLIENT_ID', ''), hemmelighet: !!cfg_('BANK_CLIENT_SECRET', ''), finInst: cfg_('BANK_FININST', ''),
       tilkoblet: !!cfg_('BANK_REFRESH_TOKEN', ''), klar: bankKlar_(), konto: cfg_('BANK_KONTO_NAVN', ''),
@@ -1405,6 +1411,53 @@ function nyNokkel_(len) {
   var s = '';
   while (s.length < (len || 32)) s += Utilities.getUuid().replace(/-/g, '');
   return s.slice(0, len || 32);
+}
+
+// ---------- Test av Vipps-lenker (vipps-test.html) ----------
+
+var VTEST_VARIANTER = {
+  'https-nr': 'Nettadresse, bare nummer', 'https-alt': 'Nettadresse med beløp og melding', 'https-belop': 'Nettadresse med beløp',
+  'vipps-alt': 'vipps:// med beløp og melding', 'vipps-nr': 'vipps://, bare nummer', 'intent-alt': 'Android-intent med beløp og melding',
+  'vipps-app': 'Bare åpne Vipps-appen'
+};
+var VTEST_SVAR = { ok: '✓ Åpnet med alt utfylt', delvis: '◐ Åpnet, men mangler noe', nei: '✗ Åpnet ikke Vipps' };
+var VTEST_STEDER = {
+  'iphone-safari': 'iPhone, Safari', 'iphone-instagram': 'iPhone, Instagram', 'iphone-facebook': 'iPhone, Facebook',
+  'iphone-messenger': 'iPhone, Messenger', 'iphone-gmail': 'iPhone, Gmail', 'android-chrome': 'Android, Chrome',
+  'android-instagram': 'Android, Instagram', 'android-facebook': 'Android, Facebook', 'android-messenger': 'Android, Messenger',
+  'android-gmail': 'Android, Gmail', 'pc': 'PC, QR-kode'
+};
+var VTEST_PER_DAG = 40;
+
+/** Lagrer resultatene fra ett sted i arket Vippstest og sender dem til deg på e-post. Mobilnummeret lagres ikke. */
+function vippsTest_(p) {
+  var rent = function (v, maks) { return String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, maks); };
+  var sted = VTEST_STEDER[p.stedId];
+  if (!sted) throw new Error('Velg hvor du tester fra.');
+  var res = {};
+  try { res = typeof p.res === 'string' ? JSON.parse(p.res) : (p.res || {}); } catch (e) { res = {}; }
+  var linjer = [];
+  Object.keys(VTEST_VARIANTER).forEach(function (id) {
+    var s = res[id];
+    linjer.push('- ' + VTEST_VARIANTER[id] + ': ' + (VTEST_SVAR[s] || 'ikke testet'));
+  });
+  var testet = Object.keys(VTEST_VARIANTER).filter(function (id) { return VTEST_SVAR[res[id]]; });
+  if (!testet.length) throw new Error('Merk minst én variant før du sender.');
+
+  var cache = CacheService.getScriptCache(), nok = 'vtest_' + Utilities.formatDate(new Date(), 'Europe/Oslo', 'yyyyMMdd');
+  var n = Number(cache.get(nok) || 0) + 1;
+  if (n > VTEST_PER_DAG) throw new Error('Nok tester for i dag. Prøv igjen i morgen.');
+  cache.put(nok, String(n), 21600);
+
+  var oppdaget = rent(p.oppdaget, 80), ua = rent(p.ua, 400), belop = rent(p.belop, 10), melding = rent(p.melding, 50);
+  var lagret = {};
+  testet.forEach(function (id) { lagret[id] = res[id]; });
+  sheet_(VTEST_ARK).appendRow([new Date().toISOString(), sted + ' (' + p.stedId + ')', oppdaget, JSON.stringify(lagret), belop, melding, ua]);
+
+  var tekst = 'Vipps-lenketest fra: ' + sted + '\nSiden oppdaget: ' + oppdaget + '\nBeløp: ' + belop + ' kr, melding: «' + melding + '»\n\n' +
+    linjer.join('\n') + '\n\nNettleser-ID: ' + ua;
+  var sendt = varsle_('Vipps-lenketest: ' + sted, tekst);
+  return { ok: true, sendt: sendt };
 }
 
 /** Enkel bremse mot misbruk: maks antall kall per minutt for hele løsningen. */
