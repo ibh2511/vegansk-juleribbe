@@ -96,6 +96,8 @@ Med `VIPPS_ENV=test`:
 
 **Test av e-postene:** Under **Test** kan du også sende bare én av e-postene, merket [TEST], uten å lage en ordre: betalingsinfoen for Vipps privat, kvitteringen, og varslene du får om feil beløp, betaling som ikke ble koblet, og banktilgangen. E-postfeltet foreslår adressen i `VARSEL_EPOST` (eller `SVAR_EPOST`). Nedlastingslenken i test-kvitteringen virker ikke. Bruk «Helt testkjøp» for å teste nedlastingen.
 
+**Testlenke med 1 kr:** Under **Test** trykker du «Lag testlenke». Lenken åpner forsiden med 1 kr som pris, og en gul stripe øverst sier at det er testpris. Bare den som åpner lenken, ser og betaler 1 kr. Alle andre ser vanlig pris. Lenken virker i 2 timer, og en ny lenke stopper den gamle. Kjøp med lenken får ordrenummer TEST-… og telles ikke i statistikken, men betalingen kobles og kvitteringen sendes som vanlig, med både Vipps privat og Vipps bedrift. Koden fjernes fra adressen når siden åpnes, og huskes bare i den fanen.
+
 ## 8. Lansering
 
 1. Bytt Vipps-verdiene til **produksjonsnøklene** og sett `VIPPS_ENV` til `prod`.

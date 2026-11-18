@@ -492,7 +492,7 @@ document.querySelectorAll('button.buy').forEach(function(b){
     if(window.VJ_BETALING==='privat') return visSkjema();
     b.disabled=true; b.textContent='Åpner Vipps …';
     var u=vjUtm();
-    vjGet({action:'create', cta:b.dataset.cta, utm_source:u.utm_source, utm_campaign:u.utm_campaign, fra:u.fra, ref:u.ref})
+    vjGet({action:'create', cta:b.dataset.cta, utm_source:u.utm_source, utm_campaign:u.utm_campaign, fra:u.fra, ref:u.ref, testpris:window.VJ_TESTPRIS||''})
       .then(function(d){
         b.disabled=false; b.innerHTML=tekst;
         if(d.error==='MANGLER_INFO'){ window.VJ_BETALING='privat'; return visSkjema(); }
@@ -520,7 +520,7 @@ skjema.addEventListener('submit',function(e){
   try{ sessionStorage.setItem('vj_kunde',JSON.stringify({navn:navn,epost:epost})); }catch(e){}
   var knapp=document.getElementById('tilBetaling'); knapp.disabled=true; knapp.textContent='Et øyeblikk …'; sFeil.hidden=true;
   var u=vjUtm();
-  vjPost({action:'create', navn:navn, epost:epost, cta:aktivCta, utm_source:u.utm_source, utm_campaign:u.utm_campaign, fra:u.fra, ref:u.ref})
+  vjPost({action:'create', navn:navn, epost:epost, cta:aktivCta, utm_source:u.utm_source, utm_campaign:u.utm_campaign, fra:u.fra, ref:u.ref, testpris:window.VJ_TESTPRIS||''})
     .then(function(d){
       if(d.redirectUrl){ location.href=d.redirectUrl; return; } // byttet til Vipps bedrift mens siden var åpen
       if(!d.ok||!d.takkUrl) throw new Error(d.error||'');
