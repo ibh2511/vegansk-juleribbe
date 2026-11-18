@@ -1,0 +1,48 @@
+# Sender backend/ til Google Apps Script og oppdaterer implementeringen når backend endres på main.
+# Krever secret CLASPRC_JSON og variablene APPS_SCRIPT_ID og APPS_SCRIPT_DEPLOYMENT_ID (se OPPSETT.md).
+# Bruk innloggingen til Google-kontoen som eier heftets Apps Script, ikke kontoen til juletreff-kumi.
+name: Deploy Apps Script
+
+on:
+  push:
+    branches: [main]
+    paths: ['backend/**', '.github/workflows/apps-script.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apps-script
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+      SCRIPT_ID: ${{ vars.APPS_SCRIPT_ID }}
+      DEPLOYMENT_ID: ${{ vars.APPS_SCRIPT_DEPLOYMENT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Sjekk oppsett
+        id: sjekk
+        run: |
+          if [ -z "$CLASPRC_JSON" ] || [ -z "$SCRIPT_ID" ] || [ -z "$DEPLOYMENT_ID" ]; then
+            echo "::warning::Mangler CLASPRC_JSON, APPS_SCRIPT_ID eller APPS_SCRIPT_DEPLOYMENT_ID. Hopper over."
+            echo "klar=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "klar=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Send koden og lag ny versjon
+        if: steps.sjekk.outputs.klar == 'true'
+        run: |
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
+          printf '{"scriptId":"%s","rootDir":"backend"}' "$SCRIPT_ID" > .clasp.json
+          npx --yes @google/clasp@2.4.2 push --force
+          npx --yes @google/clasp@2.4.2 deploy -i "$DEPLOYMENT_ID" -d "main ${GITHUB_SHA::7}"
+          rm -f ~/.clasprc.json

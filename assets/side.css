@@ -1,5 +1,6 @@
 :root{--red:#9e1b22;--red-dark:#741218;--green:#1f3d2b;--cream:#f8f1e3;--paper:#fffaf0;--gold:#c8a04a;--ink:#2a1d17;--muted:#6b5a4e;--vipps:#ff5b24;--line:#e6d8bf}
 *{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
 body{background:var(--cream);color:var(--ink);font:400 17px/1.6 "Source Sans 3",system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column}
 h1,h2,h3{font-family:"Playfair Display",Georgia,serif;line-height:1.2;color:var(--red-dark)}
 a{color:var(--red)}

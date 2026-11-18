@@ -70,6 +70,11 @@
       C = { ordinaer: d.ordinaer, lansering: d.lansering, start: new Date(d.start).getTime(), slutt: new Date(d.slutt).getTime() };
       avvik = new Date(d.naa).getTime() - Date.now();
       vis();
+      // Betalingsløsningen som er valgt i admin: «bedrift» (rett til Vipps) eller «privat» (vipps til mobilnummer)
+      window.VJ_BETALING = d.betaling === 'privat' ? 'privat' : 'bedrift';
+      document.documentElement.setAttribute('data-betaling', window.VJ_BETALING);
+      alle('[data-bare-privat]', function (el) { el.hidden = window.VJ_BETALING !== 'privat'; });
+      alle('[data-bare-bedrift]', function (el) { el.hidden = window.VJ_BETALING === 'privat'; });
     }).catch(function () {});
   }
 })();

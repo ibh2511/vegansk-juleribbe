@@ -240,6 +240,21 @@ footer a{color:var(--cream)}
   .about{grid-template-columns:240px 1fr}
   .sticky{display:none}
 }
+
+/* Kjøpsskjema for Vipps privat (navn og e-post før betaling) */
+dialog.skjema{border:0;padding:0;background:transparent;max-width:440px;width:calc(100% - 32px);margin:auto}
+dialog.skjema::backdrop{background:rgba(42,29,23,.55)}
+.skjema form{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:26px 22px 20px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.skjema h2{font-size:28px;margin:0 30px 6px 0}
+.skjema .sub{color:var(--muted);margin:0 0 16px;font-size:16px}
+.skjema label{display:block;font-weight:700;font-size:15px;margin-top:12px;color:var(--ink)}
+.skjema input{display:block;width:100%;font:inherit;font-weight:400;padding:12px 14px;border:1px solid #d8c7a8;border-radius:10px;background:#fff;margin-top:6px;min-height:50px}
+.skjema input:focus{outline:2px solid var(--green);outline-offset:1px}
+.skjema small{display:block;font-weight:400;color:var(--muted);font-size:13.5px;margin-top:4px}
+.skjema .btn-vipps{margin-top:18px;max-width:none}
+.skjema .feil{background:#fbeaea;color:var(--red-dark);border-radius:8px;padding:8px 12px;font-size:14.5px;margin-top:12px}
+.skjema .lukk{position:absolute;top:10px;right:10px;width:40px;height:40px;border:0;background:none;font-size:28px;line-height:1;color:var(--muted);cursor:pointer;border-radius:50%}
+.skjema .lukk:focus-visible{outline:2px solid var(--green)}
 </style>
 <script src="assets/config.js"></script>
 <script src="assets/api.js"></script>
@@ -344,7 +359,7 @@ footer a{color:var(--cream)}
     <h2>Slik får du heftet</h2>
     <p class="sub">Det tar under ett minutt.</p>
     <div class="steps">
-      <div class="step"><h3>Betal med Vipps</h3><p>Trykk på knappen og godkjenn <span data-pris>149 kr</span> i Vipps-appen.</p></div>
+      <div class="step"><h3>Betal med Vipps</h3><p data-bare-bedrift>Trykk på knappen og godkjenn <span data-pris>149 kr</span> i Vipps-appen.</p><p data-bare-privat hidden>Trykk på knappen, skriv navn og e-post, og vipps <span data-pris>149 kr</span>.</p></div>
       <div class="step"><h3>Få lenken</h3><p>Du får nedlastingslenken her på siden og på e-post.</p></div>
       <div class="step"><h3>Lag julemiddagen</h3><p>Åpne PDF-en på mobilen eller skriv den ut.</p></div>
     </div>
@@ -432,6 +447,21 @@ footer a{color:var(--cream)}
   <button class="btn-vipps buy" type="button" data-cta="sticky">Kjøp med <strong>Vipps</strong></button>
 </div>
 
+<dialog class="skjema" id="kjopsskjema" aria-labelledby="skjemaTittel">
+  <form id="skjema" novalidate>
+    <button class="lukk" type="button" id="lukkSkjema" aria-label="Lukk">×</button>
+    <h2 id="skjemaTittel">Kjøp heftet</h2>
+    <p class="sub">Du betaler <b data-pris>149 kr</b> med Vipps på neste side.</p>
+    <label for="kNavn">Fullt navn, slik det står i Vipps</label>
+    <input id="kNavn" name="navn" autocomplete="name" maxlength="80" required>
+    <label for="kEpost">E-post<small>Heftet sendes hit.</small></label>
+    <input id="kEpost" name="epost" type="email" inputmode="email" autocomplete="email" maxlength="120" required>
+    <p class="feil" id="skjemaFeil" role="alert" hidden></p>
+    <button class="btn-vipps" type="submit" id="tilBetaling">Gå til betaling</button>
+    <p class="samtykke">Ved kjøp godtar du <a href="vilkar.html">salgsvilkårene</a> og samtykker til at heftet leveres med en gang, slik at angreretten faller bort.</p>
+  </form>
+</dialog>
+
 <script src="assets/pris.js"></script>
 <script>
 // Vis kjøpsknapp nederst på mobil når hovedknappen er scrollet ut av syne
@@ -451,20 +481,57 @@ if (typeof window.vjHit !== 'function') {
   window.vjUtm = function(){ return {utm_source:'', utm_campaign:'', fra:'', ref:''}; };
 }
 vjHit();
+// To løsninger, valgt i admin: Vipps bedrift sender kunden rett til Vipps. Vipps privat spør først om navn
+// og e-post, og takkesiden viser hvordan man vippser. Backend avgjør, så siden følger med selv om du bytter.
+var aktivCta='';
 document.querySelectorAll('button.buy').forEach(function(b){
   var tekst=b.innerHTML; b.dataset.tekst=tekst;
   b.addEventListener('click', function(){
     if(!window.VJ_API){ b.textContent='Salget åpner snart'; return; }
+    aktivCta=b.dataset.cta;
+    if(window.VJ_BETALING==='privat') return visSkjema();
     b.disabled=true; b.textContent='Åpner Vipps …';
     var u=vjUtm();
     vjGet({action:'create', cta:b.dataset.cta, utm_source:u.utm_source, utm_campaign:u.utm_campaign, fra:u.fra, ref:u.ref})
-      .then(function(d){ if(!d.ok||!d.redirectUrl) throw new Error(d.error); location.href=d.redirectUrl; })
+      .then(function(d){
+        b.disabled=false; b.innerHTML=tekst;
+        if(d.error==='MANGLER_INFO'){ window.VJ_BETALING='privat'; return visSkjema(); }
+        if(!d.ok||!d.redirectUrl) throw new Error(d.error); location.href=d.redirectUrl;
+      })
       .catch(function(){ b.disabled=false; b.innerHTML=tekst; alertBox(); });
   });
+});
+var dlg=document.getElementById('kjopsskjema'), skjema=document.getElementById('skjema'), sFeil=document.getElementById('skjemaFeil');
+function visSkjema(){
+  try{ var lagret=JSON.parse(sessionStorage.getItem('vj_kunde')||'{}'); if(lagret.navn) skjema.navn.value=lagret.navn; if(lagret.epost) skjema.epost.value=lagret.epost; }catch(e){}
+  sFeil.hidden=true;
+  if(dlg.showModal) dlg.showModal(); else dlg.setAttribute('open','');
+  setTimeout(function(){ (skjema.navn.value?skjema.epost:skjema.navn).focus(); },50);
+}
+function lukkSkjema(){ if(dlg.close) dlg.close(); else dlg.removeAttribute('open'); }
+document.getElementById('lukkSkjema').onclick=lukkSkjema;
+dlg.addEventListener('click',function(e){ if(e.target===dlg) lukkSkjema(); });
+skjema.addEventListener('submit',function(e){
+  e.preventDefault();
+  var navn=skjema.navn.value.trim(), epost=skjema.epost.value.trim();
+  function feil(t,felt){ sFeil.textContent=t; sFeil.hidden=false; if(felt) felt.focus(); }
+  if(navn.split(/\s+/).filter(function(w){return w.length>1;}).length<2) return feil('Skriv fullt navn, slik det står i Vipps.',skjema.navn);
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(epost)) return feil('Skriv en gyldig e-postadresse.',skjema.epost);
+  try{ sessionStorage.setItem('vj_kunde',JSON.stringify({navn:navn,epost:epost})); }catch(e){}
+  var knapp=document.getElementById('tilBetaling'); knapp.disabled=true; knapp.textContent='Et øyeblikk …'; sFeil.hidden=true;
+  var u=vjUtm();
+  vjPost({action:'create', navn:navn, epost:epost, cta:aktivCta, utm_source:u.utm_source, utm_campaign:u.utm_campaign, fra:u.fra, ref:u.ref})
+    .then(function(d){
+      if(d.redirectUrl){ location.href=d.redirectUrl; return; } // byttet til Vipps bedrift mens siden var åpen
+      if(!d.ok||!d.takkUrl) throw new Error(d.error||'');
+      location.href=d.takkUrl;
+    })
+    .catch(function(err){ knapp.disabled=false; knapp.textContent='Gå til betaling'; feil(err&&err.message&&err.message.length<120?err.message:'Vi fikk ikke kontakt. Prøv igjen om litt.'); });
 });
 // Går kunden tilbake fra Vipps, henter mobilen ofte siden fra minnet med knappen fortsatt låst. Lås den opp igjen.
 window.addEventListener('pageshow', function(e){
   document.querySelectorAll('button.buy').forEach(function(b){ if(b.disabled && b.dataset.tekst){ b.disabled=false; b.innerHTML=b.dataset.tekst; } });
+  var k=document.getElementById('tilBetaling'); if(k && k.disabled){ k.disabled=false; k.textContent='Gå til betaling'; }
 });
 function alertBox(){
   var m=document.getElementById('kjopfeil'); if(m){ m.hidden=false; return; }

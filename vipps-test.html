@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="format-detection" content="telephone=no">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/side.css">
+<script src="assets/config.js"></script><script src="assets/api.js"></script>
+<script src="assets/vipps.js"></script><script src="assets/qrcode.min.js"></script>
+<title>Test av Vipps-lenker</title>
+<style>
+main{max-width:720px}
+h1{font-size:30px;margin-bottom:6px}
+.intro{color:var(--muted);margin-bottom:16px}
+.kort{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+.miljo{background:#eef3ee;border-color:#cfe0d1}
+.miljo b{font-size:18px}
+.miljo code{display:block;font-size:11.5px;color:var(--muted);margin-top:6px;word-break:break-all}
+.felt{display:grid;grid-template-columns:1fr 110px;gap:10px}
+.felt label{font-weight:700;font-size:14px}
+.felt input{max-width:none;margin-top:4px}
+.felt .hel{grid-column:1/-1}
+.variant h2{font-size:18px;font-family:inherit;font-weight:700;color:var(--ink);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.variant p{color:var(--muted);font-size:14.5px;margin:4px 0 8px}
+.variant code{display:block;font-size:12px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 8px;word-break:break-all;color:var(--ink)}
+.proev{display:inline-flex;align-items:center;justify-content:center;background:var(--vipps);color:#fff;font-weight:700;text-decoration:none;border-radius:10px;padding:10px 18px;margin-top:10px;min-height:46px}
+.resultat{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.resultat button{font:inherit;font-size:14px;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;cursor:pointer;min-height:38px}
+.resultat button[aria-pressed=true]{border-color:var(--green);background:var(--green);color:var(--cream)}
+.merke{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:999px;background:#fbeaea;color:var(--red-dark)}
+.merke.reserve{background:#f4ecd8;color:#7a5a12}
+.qr svg{width:170px;height:170px;display:block;margin-top:10px;background:#fff;border-radius:8px}
+textarea{width:100%;min-height:150px;font:13px/1.4 ui-monospace,monospace;border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px}
+ol.miljoer{padding-left:22px;color:var(--ink)}
+ol.miljoer li{margin:4px 0}
+.btn{min-height:46px;font-size:16px;padding:10px 18px}
+</style>
+</head>
+<body>
+<div class="band" aria-hidden="true"></div>
+<main>
+  <h1>Test av Vipps-lenker</h1>
+  <p class="intro">Åpne denne siden fra hvert sted under, trykk på hver variant og merk hva som skjedde. Trykk «Kopier resultatene» til slutt og send dem til Claude. Betal gjerne 1 kr til deg selv fra en annen persons Vipps for å se hele veien.</p>
+
+  <div class="kort miljo"><span>Du tester fra</span><br><b id="miljo"></b><code id="ua"></code></div>
+
+  <div class="kort">
+    <div class="felt">
+      <label>Mobilnummer (8 sifre)<input id="nr" inputmode="numeric" maxlength="8" placeholder="91234567"></label>
+      <label>Beløp (kr)<input id="kr" inputmode="numeric" value="1"></label>
+      <label class="hel">Melding<input id="melding" value="Test" maxlength="50"></label>
+    </div>
+  </div>
+
+  <div id="varianter"></div>
+
+  <div class="kort">
+    <h2 style="font-size:20px">Resultater</h2>
+    <p class="intro" style="margin:4px 0 0">Resultatene lagres i denne nettleseren. Test fra flere steder, og kopier fra hvert sted.</p>
+    <button class="btn" type="button" id="kopier">Kopier resultatene</button>
+    <textarea id="sammendrag" readonly></textarea>
+  </div>
+
+  <div class="kort">
+    <h2 style="font-size:20px">Steder å teste fra</h2>
+    <ol class="miljoer">
+      <li>iPhone: Safari (lim inn adressen)</li>
+      <li>iPhone: Instagram (send lenken til deg selv i en melding og trykk på den)</li>
+      <li>iPhone: Facebook eller Messenger</li>
+      <li>iPhone: Gmail-appen (send lenken til deg selv på e-post)</li>
+      <li>Android: Chrome, og Instagram hvis du har en Android-telefon tilgjengelig</li>
+      <li>PC: skann QR-kodene med kameraet på mobilen</li>
+    </ol>
+  </div>
+</main>
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  var m=vjVipps.miljo(), valg=vjVipps.valg(m);
+  $('miljo').textContent=m.tekst; $('ua').textContent=navigator.userAgent;
+  var VAR=[
+    {id:'https-nr',navn:'Nettadresse, bare nummer',type:'https',belop:false,melding:false},
+    {id:'https-alt',navn:'Nettadresse med beløp og melding',type:'https',belop:true,melding:true},
+    {id:'https-belop',navn:'Nettadresse med beløp',type:'https',belop:true,melding:false},
+    {id:'vipps-alt',navn:'vipps:// med beløp og melding',type:'vipps',belop:true,melding:true},
+    {id:'vipps-nr',navn:'vipps://, bare nummer',type:'vipps',belop:false,melding:false},
+    {id:'intent-alt',navn:'Android-intent med beløp og melding',type:'intent',belop:true,melding:true},
+    {id:'vipps-app',navn:'Bare åpne Vipps-appen',type:'app'}
+  ];
+  var SVAR=[['ok','✓ Åpnet med alt utfylt'],['delvis','◐ Åpnet, men mangler noe'],['nei','✗ Åpnet ikke Vipps']];
+  var NOKKEL='vj_vippstest_'+m.tekst, res={};
+  try{ res=JSON.parse(localStorage.getItem(NOKKEL)||'{}'); }catch(e){}
+  try{ $('nr').value=new URLSearchParams(location.search).get('nr')||localStorage.getItem('vj_vippstest_nr')||''; }catch(e){}
+
+  function lenke(v){
+    var nr=$('nr').value.replace(/\D/g,''), ore=Math.round(Number(String($('kr').value).replace(',','.'))*100)||0;
+    if(v.type==='app') return 'vipps://';
+    var h=vjVipps.https(nr||'00000000', v.belop?ore:0, v.melding?$('melding').value:'');
+    return vjVipps.lenker(h)[v.type];
+  }
+  function tegn(){
+    $('varianter').innerHTML=VAR.map(function(v){
+      var merke=v.type===valg.hoved&&v.belop&&v.melding?'<span class="merke">Takkesiden bruker denne her</span>':v.type===valg.reserve&&v.belop&&v.melding?'<span class="merke reserve">Reserve på takkesiden</span>':'';
+      var l=lenke(v), qr=!m.mobil&&v.type==='https'?'<div class="qr">'+vjVipps.qrSvg(l)+'</div>':'';
+      return '<div class="kort variant"><h2>'+esc(v.navn)+merke+'</h2><code>'+esc(l)+'</code>'+qr+
+        (m.mobil?'<a class="proev" href="'+esc(l)+'">Prøv</a>':'')+
+        '<div class="resultat">'+SVAR.map(function(s){ return '<button type="button" data-v="'+v.id+'" data-s="'+s[0]+'" aria-pressed="'+(res[v.id]===s[0])+'">'+s[1]+'</button>'; }).join('')+'</div></div>';
+    }).join('');
+    oppsummer();
+  }
+  function oppsummer(){
+    var linjer=['Vipps-lenketest: '+m.tekst,'Beløp: '+$('kr').value+' kr, melding: «'+$('melding').value+'»'];
+    VAR.forEach(function(v){ var s=SVAR.filter(function(x){return x[0]===res[v.id];})[0]; linjer.push('- '+v.navn+': '+(s?s[1]:'ikke testet')); });
+    linjer.push('Nettleser-ID: '+navigator.userAgent);
+    $('sammendrag').value=linjer.join('\n');
+  }
+  $('varianter').addEventListener('click',function(e){
+    var b=e.target.closest('button[data-v]'); if(!b) return;
+    res[b.dataset.v]=b.dataset.s; try{ localStorage.setItem(NOKKEL,JSON.stringify(res)); }catch(err){}
+    tegn();
+  });
+  ['nr','kr','melding'].forEach(function(id){ $(id).addEventListener('input',function(){ try{ localStorage.setItem('vj_vippstest_nr',$('nr').value); }catch(e){} tegn(); }); });
+  $('kopier').onclick=function(){
+    vjVipps.kopier($('sammendrag').value).then(function(){ $('kopier').textContent='Kopiert!'; setTimeout(function(){ $('kopier').textContent='Kopier resultatene'; },2500); })
+      .catch(function(){ $('sammendrag').select(); });
+  };
+  tegn();
+})();
+</script>
+</body>
+</html>
