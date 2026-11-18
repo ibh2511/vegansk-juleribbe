@@ -103,11 +103,13 @@ Med `VIPPS_ENV=test`:
 3. Gjør ett ekte kjøp selv og refunder det i Vipps-portalen.
 4. Fyll inn foretaksnavn, adresse og e-post i `vilkar.html`, `personvern.html` og bunnteksten på forsiden.
 
+**Feilsøking av Vipps bedrift:** Får kundene «Vi fikk ikke kontakt med Vipps», trykker du **Test Vipps bedrift** under Betalingsløsning i adminpanelet. Den lager en betaling på 1 kr, avbryter den med en gang, og viser hva Vipps svarte. Den vanligste årsaken er at nøklene er fra produksjon mens `VIPPS_ENV` ikke er satt til `prod`. Da står det «(testmiljø)» i adminpanelet. Når et kjøp feiler, får du også en e-post med feilmeldingen fra Vipps (høyst én i timen), og ordren får status FEILET.
+
 ## 9. Vipps privat (betaling til mobilnummer)
 
 I adminpanelet under **Betalingsløsning** velger du mellom:
 
-- **Vipps bedrift:** Betaling på nett med Vipps-avtalen, som beskrevet over. Vipps tar et gebyr per salg. Legg inn satsen fra avtalen (prosent og eventuelt kroner per salg), så viser adminpanelet gebyr og netto.
+- **Vipps bedrift:** Betaling på nett med Vipps-avtalen, som beskrevet over. Vipps tar et gebyr per salg. Satsen fra avtalen, 2,99 % + 1 kr, er lagt inn i koden, så adminpanelet viser gebyr og netto. Endrer Vipps satsen, legger du `GEBYR_PROSENT` (for eksempel `2.99`) og `GEBYR_KR` (for eksempel `1`) i Skriptegenskaper.
 - **Vipps privat:** Kunden skriver navn og e-post, får et ordrenummer og vippser til mobilnummeret du legger inn. Backend leser innbetalingene på kontoen din i SpareBank 1 og kobler dem til ordren på navn og beløp. Når betalingen er funnet, får kunden kvitteringen med heftet.
 
 Byttet gjelder med en gang på nettsiden. Tabellen **Salg per betalingsløsning** viser salg, omsetning, gebyr og netto for hver av dem.
