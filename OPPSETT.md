@@ -92,7 +92,9 @@ Med `VIPPS_ENV=test`:
 4. Prøv å avbryte en betaling og sjekk at siden sier at ingenting ble trukket.
 5. Logg inn på `/admin.html` og se at ordren og besøkene vises.
 
-**Testkjøp uten Vipps:** I adminpanelet under **Testkjøp** kan du skrive inn din egen e-post. Da lages en betalt testordre (TEST-…), du får den ekte e-posten, og du kan åpne takkesiden og laste ned heftet med vannmerke. Testkjøp telles ikke i statistikken.
+**Testkjøp uten Vipps:** I adminpanelet under **Test** velger du «Helt testkjøp» og skriver inn din egen e-post. Da lages en betalt testordre (TEST-…), du får den ekte e-posten, og du kan åpne takkesiden og laste ned heftet med vannmerke. Testkjøp telles ikke i statistikken.
+
+**Test av e-postene:** Under **Test** kan du også sende bare én av e-postene, merket [TEST], uten å lage en ordre: betalingsinfoen for Vipps privat, kvitteringen, og varslene du får om feil beløp, betaling som ikke ble koblet, og banktilgangen. E-postfeltet foreslår adressen i `VARSEL_EPOST` (eller `SVAR_EPOST`). Nedlastingslenken i test-kvitteringen virker ikke. Bruk «Helt testkjøp» for å teste nedlastingen.
 
 ## 8. Lansering
 

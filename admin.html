@@ -52,10 +52,12 @@ tbody tr:hover{background:#fbf7ee}
 .lag{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .lag input{max-width:260px}
 .lag .btn{margin-top:0;font-size:16px;min-height:46px;padding:10px 18px}
-.test{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px}
-.test input{min-height:46px}
+.test{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-bottom:8px}
+.test input{min-height:46px;width:100%;max-width:none;min-width:0;box-sizing:border-box}
 .test .btn{margin-top:0;font-size:16px;min-height:46px;padding:10px 18px}
-@media (max-width:760px){.test{grid-template-columns:1fr}}
+.test select{grid-column:1/-1;min-height:46px;width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+.test.uten-tlf{grid-template-columns:1fr 1fr auto}
+@media (max-width:760px){.test,.test.uten-tlf{grid-template-columns:1fr}}
 .testsvar{margin-top:12px;background:#eef3ee;border-radius:8px;padding:10px 12px;font-size:15px}
 .testsvar.feil{background:#fbeaea;color:var(--red-dark)}
 .btn.fare{background:var(--red)}
@@ -212,8 +214,19 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
     </div>
 
     <div class="panel">
-      <h2>Testkjøp</h2>
-      <p class="hint">Simulerer et betalt Vipps-kjøp uten å trekke penger. Du får den ekte e-posten med nedlastingslenke, og kan åpne takkesiden og laste ned heftet med vannmerke. Testkjøp får ordrenummer TEST-… og telles ikke i statistikken.</p>
+      <h2>Test</h2>
+      <div class="test">
+        <select id="tType" aria-label="Hva skal testes">
+          <option value="kjop">Helt testkjøp (lager en ordre, nedlastingen virker)</option>
+          <option value="betaling">E-post: betalingsinfo (Vipps privat)</option>
+          <option value="kvittering">E-post: kvittering med nedlastingslenke</option>
+          <option value="feilbelop">Varsel til deg: betaling med feil beløp</option>
+          <option value="ikkekoblet">Varsel til deg: betaling som ikke ble koblet</option>
+          <option value="utloper">Varsel til deg: banktilgangen går snart ut</option>
+          <option value="frakoblet">Varsel til deg: banken må kobles til på nytt</option>
+        </select>
+      </div>
+      <p class="hint" id="tHint"></p>
       <div class="test">
         <input id="tNavn" placeholder="Navn" maxlength="80" autocomplete="off" value="Test Testesen">
         <input id="tEpost" type="email" placeholder="E-post" maxlength="120" autocomplete="off">
@@ -314,6 +327,7 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
           '<td><button class="btn" type="button" data-koble="'+esc(b.bankId)+'">Koble</button> <button class="lenke" type="button" data-ignorer="'+esc(b.bankId)+'">Ignorer</button></td></tr>';
       }).join(''):'<tr><td colspan="6" class="tom">Ingen innbetalinger venter på kobling.</td></tr>')+'</tbody>';
     if(!innstillingerRort) fyllInnstillinger(inn);
+    if(!$('tEpost').value && inn.varselEpost) $('tEpost').value=inn.varselEpost; // din egen adresse som forslag
     tegnBank(inn);
   }
   var innstillingerRort=false;
@@ -421,19 +435,39 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
   $('angre').onclick=function(){
     vjPost({action:'nullstill', okt:okt, angre:true}).then(function(d){ if(d.ok) hent(); }).catch(function(){});
   };
+  // Test: helt testkjøp, eller bare én av e-postene, merket [TEST], uten å lage en ordre (som i Kumi-admin)
+  var TEST_HINT={
+    kjop:'Simulerer et betalt Vipps-kjøp uten å trekke penger. Du får den ekte e-posten med nedlastingslenke, og kan åpne takkesiden og laste ned heftet med vannmerke. Testkjøp får ordrenummer TEST-… og telles ikke i statistikken.',
+    betaling:'E-posten kunden får rett etter bestillingen med Vipps privat, med «Åpne Vipps»-knappen og tabellen med nummer, beløp og navn. Ingen ordre lages.',
+    kvittering:'E-posten kunden får når betalingen er funnet. Nedlastingslenken i testen virker ikke. Vil du teste nedlastingen, velger du «Helt testkjøp».',
+    feilbelop:'Det du får når en kunde som venter, betaler feil beløp (her 14,90 kr). Navnet du skriver inn, brukes som kunden.',
+    ikkekoblet:'Det du får når en betaling med riktig beløp ikke passer med noen ventende ordre (her fra «Kris Olsen»).',
+    utloper:'Det du får 14 dager før BankID-godkjenningen for SpareBank 1 går ut.',
+    frakoblet:'Det du får hvis backend ikke lenger får lese kontoen og banken må kobles til på nytt.'
+  };
+  function visTest(){
+    var t=$('tType').value, kjop=t==='kjop';
+    $('tHint').textContent=TEST_HINT[t]||'';
+    $('tTlf').hidden=!kjop; $('tNavn').parentNode.classList.toggle('uten-tlf',!kjop);
+    $('testkjop').textContent=kjop?'Lag testkjøp':'Send test';
+    $('tEpost').placeholder=t==='kjop'||t==='betaling'||t==='kvittering'?'E-post':'E-post som skal få varselet';
+  }
+  $('tType').onchange=function(){ visTest(); $('testSvar').hidden=true; };
+  visTest();
   $('testkjop').onclick=function(){
-    var b=$('testkjop'), svar=$('testSvar'), ep=$('tEpost').value.trim();
+    var b=$('testkjop'), svar=$('testSvar'), ep=$('tEpost').value.trim(), type=$('tType').value, knapp=b.textContent;
     if(!ep){ $('tEpost').focus(); return; }
-    b.disabled=true; b.textContent='Lager …'; svar.hidden=true;
-    vjPost({action:'testkjop', okt:okt, navn:$('tNavn').value, epost:ep, telefon:$('tTlf').value}).then(function(d){
-      b.disabled=false; b.textContent='Lag testkjøp';
+    b.disabled=true; b.textContent=type==='kjop'?'Lager …':'Sender …'; svar.hidden=true;
+    vjPost({action:'testkjop', okt:okt, type:type, navn:$('tNavn').value, epost:ep, telefon:$('tTlf').value}).then(function(d){
+      b.disabled=false; b.textContent=knapp;
+      if(d.ok && type!=='kjop'){ svar.className=d.epostSendt?'testsvar':'testsvar feil'; svar.textContent=d.melding||'Sendt.'; svar.hidden=false; return; }
       if(d.ok && !d.ordre){ svar.className='testsvar feil'; svar.textContent='Backend kjenner ikke testkjøp ennå. Lim inn nyeste Code.gs i Apps Script og lag en ny versjon av implementeringen.'; svar.hidden=false; return; }
       if(!d.ok){ if(d.utlogget) return visLogin('Du er logget ut. Logg inn på nytt.'); svar.className='testsvar feil'; svar.textContent=d.error||'Noe gikk galt'; svar.hidden=false; return; }
       svar.className='testsvar'; svar.textContent='';
       svar.appendChild(document.createTextNode('Testkjøp '+d.ordre+' er laget. '+(d.epostSendt?'E-posten er sendt til '+d.epost+'. ':'E-posten kunne ikke sendes, se loggen i Apps Script. ')));
       var a=document.createElement('a'); a.href=d.takkUrl; a.target='_blank'; a.rel='noopener'; a.textContent='Åpne takkesiden →'; svar.appendChild(a);
       svar.hidden=false; hent();
-    }).catch(function(){ b.disabled=false; b.textContent='Lag testkjøp'; svar.className='testsvar feil'; svar.textContent='Fikk ikke kontakt med backend.'; svar.hidden=false; });
+    }).catch(function(){ b.disabled=false; b.textContent=knapp; svar.className='testsvar feil'; svar.textContent='Fikk ikke kontakt med backend.'; svar.hidden=false; });
   };
   // Betalingsløsning
   ['iNr','iPst','iKr','iUtfylt'].forEach(function(id){ $(id).addEventListener('input',function(){ innstillingerRort=true; }); });
