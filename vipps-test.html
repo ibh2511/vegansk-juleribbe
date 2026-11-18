@@ -18,12 +18,15 @@ h1{font-size:30px;margin-bottom:6px}
 .intro{color:var(--muted);margin-bottom:16px}
 .kort{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
 .miljo{background:#eef3ee;border-color:#cfe0d1}
-.miljo b{font-size:18px}
+.miljo label{font-weight:700;font-size:15px;display:block}
+.miljo select{display:block;width:100%;font:inherit;font-size:18px;font-weight:700;margin-top:6px;padding:10px 12px;border:1.5px solid var(--green);border-radius:10px;background:#fff;color:var(--ink);min-height:48px}
+.miljo .hint{font-size:14px;color:var(--muted);margin-top:8px}
 .miljo code{display:block;font-size:11.5px;color:var(--muted);margin-top:6px;word-break:break-all}
 .felt{display:grid;grid-template-columns:1fr 110px;gap:10px}
 .felt label{font-weight:700;font-size:14px}
 .felt input{max-width:none;margin-top:4px}
 .felt .hel{grid-column:1/-1}
+.lenkeknapp{background:none;border:0;color:var(--red);text-decoration:underline;cursor:pointer;font:inherit;font-size:14.5px;padding:4px 0;margin-top:8px}
 .variant h2{font-size:18px;font-family:inherit;font-weight:700;color:var(--ink);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .variant p{color:var(--muted);font-size:14.5px;margin:4px 0 8px}
 .variant code{display:block;font-size:12px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 8px;word-break:break-all;color:var(--ink)}
@@ -34,9 +37,17 @@ h1{font-size:30px;margin-bottom:6px}
 .merke{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:999px;background:#fbeaea;color:var(--red-dark)}
 .merke.reserve{background:#f4ecd8;color:#7a5a12}
 .qr svg{width:170px;height:170px;display:block;margin-top:10px;background:#fff;border-radius:8px}
+.send{position:sticky;bottom:0;z-index:2;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px;box-shadow:0 -6px 18px rgba(42,29,23,.08)}
+.send .rad{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.send .btn{margin-top:0}
+#sendStatus{font-size:15px;color:var(--muted)}
+#sendStatus.ok{color:var(--green);font-weight:700}
+#sendStatus.feil{color:var(--red-dark)}
 textarea{width:100%;min-height:150px;font:13px/1.4 ui-monospace,monospace;border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px}
 ol.miljoer{padding-left:22px;color:var(--ink)}
-ol.miljoer li{margin:4px 0}
+ol.miljoer li{margin:6px 0}
+ol.miljoer small{display:block;color:var(--muted);font-size:14px;line-height:1.4}
+details summary{cursor:pointer;font-weight:700}
 .btn{min-height:46px;font-size:16px;padding:10px 18px}
 </style>
 </head>
@@ -44,9 +55,14 @@ ol.miljoer li{margin:4px 0}
 <div class="band" aria-hidden="true"></div>
 <main>
   <h1>Test av Vipps-lenker</h1>
-  <p class="intro">Åpne denne siden fra hvert sted under, trykk på hver variant og merk hva som skjedde. Trykk «Kopier resultatene» til slutt og send dem til Claude. Betal gjerne 1 kr til deg selv fra en annen persons Vipps for å se hele veien.</p>
+  <p class="intro">Trykk «Prøv» på hver variant, se om Vipps åpnes med nummer, beløp og melding fylt ut, og merk hva som skjedde. Du trenger ikke betale. Trykk «Send inn» når du er ferdig, så kan Claude lese resultatene. Gjør det samme fra hvert sted i listen nederst.</p>
 
-  <div class="kort miljo"><span>Du tester fra</span><br><b id="miljo"></b><code id="ua"></code></div>
+  <div class="kort miljo">
+    <label for="sted">Hvor tester du fra?</label>
+    <select id="sted"></select>
+    <p class="hint" id="oppdaget"></p>
+    <code id="ua"></code>
+  </div>
 
   <div class="kort">
     <div class="felt">
@@ -54,35 +70,53 @@ ol.miljoer li{margin:4px 0}
       <label>Beløp (kr)<input id="kr" inputmode="numeric" value="1"></label>
       <label class="hel">Melding<input id="melding" value="Test" maxlength="50"></label>
     </div>
+    <button class="lenkeknapp" type="button" id="kopierTestlenke">Kopier lenke til denne siden med nummeret</button>
   </div>
 
   <div id="varianter"></div>
 
-  <div class="kort">
-    <h2 style="font-size:20px">Resultater</h2>
-    <p class="intro" style="margin:4px 0 0">Resultatene lagres i denne nettleseren. Test fra flere steder, og kopier fra hvert sted.</p>
-    <button class="btn" type="button" id="kopier">Kopier resultatene</button>
-    <textarea id="sammendrag" readonly></textarea>
+  <div class="send">
+    <div class="rad">
+      <button class="btn" type="button" id="sendInn">Send inn</button>
+      <span id="sendStatus" role="status">Ikke sendt ennå.</span>
+    </div>
   </div>
 
   <div class="kort">
     <h2 style="font-size:20px">Steder å teste fra</h2>
-    <ol class="miljoer">
-      <li>iPhone: Safari (lim inn adressen)</li>
-      <li>iPhone: Instagram (send lenken til deg selv i en melding og trykk på den)</li>
-      <li>iPhone: Facebook eller Messenger</li>
-      <li>iPhone: Gmail-appen (send lenken til deg selv på e-post)</li>
-      <li>Android: Chrome, og Instagram hvis du har en Android-telefon tilgjengelig</li>
-      <li>PC: skann QR-kodene med kameraet på mobilen</li>
-    </ol>
+    <p class="intro" style="margin:4px 0 8px">Velg stedet øverst på siden hver gang. Hvert sted sendes inn for seg.</p>
+    <ol class="miljoer" id="stedListe"></ol>
+  </div>
+
+  <div class="kort">
+    <details>
+      <summary>Hvis «Send inn» ikke virker</summary>
+      <p class="intro" style="margin:8px 0 0">Kopier resultatene og lim dem inn i chatten med Claude.</p>
+      <button class="btn" type="button" id="kopier" style="margin-top:10px">Kopier resultatene</button>
+      <textarea id="sammendrag" readonly></textarea>
+    </details>
   </div>
 </main>
 <script>
 (function(){
   var $=function(id){return document.getElementById(id);};
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-  var m=vjVipps.miljo(), valg=vjVipps.valg(m);
-  $('miljo').textContent=m.tekst; $('ua').textContent=navigator.userAgent;
+  function les(k,f){ try{ var v=localStorage.getItem(k); return v==null?f:v; }catch(e){ return f; } }
+  function skriv(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+  var m=vjVipps.miljo();
+  var STEDER=[
+    ['iphone-safari','iPhone, Safari','Åpne lenken i Safari.'],
+    ['iphone-instagram','iPhone, Instagram','Send lenken til deg selv eller en venn i en Instagram-melding, og trykk på den.'],
+    ['iphone-facebook','iPhone, Facebook','Del lenken i et innlegg der bare du kan se det («Bare meg»), og trykk på den i Facebook-appen.'],
+    ['iphone-messenger','iPhone, Messenger','Send lenken til deg selv i Messenger, og trykk på den.'],
+    ['iphone-gmail','iPhone, Gmail','Send lenken til deg selv på e-post, og trykk på den i Gmail-appen.'],
+    ['android-chrome','Android, Chrome','Åpne lenken i Chrome.'],
+    ['android-instagram','Android, Instagram','Som på iPhone, men i Instagram på Android.'],
+    ['android-facebook','Android, Facebook','Som på iPhone, men i Facebook på Android.'],
+    ['android-messenger','Android, Messenger','Som på iPhone, men i Messenger på Android.'],
+    ['android-gmail','Android, Gmail','Som på iPhone, men i Gmail på Android.'],
+    ['pc','PC, QR-kode','Åpne siden på PC og skann QR-kodene med kameraet på mobilen.']
+  ];
   var VAR=[
     {id:'https-nr',navn:'Nettadresse, bare nummer',type:'https',belop:false,melding:false},
     {id:'https-alt',navn:'Nettadresse med beløp og melding',type:'https',belop:true,melding:true},
@@ -93,10 +127,38 @@ ol.miljoer li{margin:4px 0}
     {id:'vipps-app',navn:'Bare åpne Vipps-appen',type:'app'}
   ];
   var SVAR=[['ok','✓ Åpnet med alt utfylt'],['delvis','◐ Åpnet, men mangler noe'],['nei','✗ Åpnet ikke Vipps']];
-  var NOKKEL='vj_vippstest_'+m.tekst, res={};
-  try{ res=JSON.parse(localStorage.getItem(NOKKEL)||'{}'); }catch(e){}
-  try{ $('nr').value=new URLSearchParams(location.search).get('nr')||localStorage.getItem('vj_vippstest_nr')||''; }catch(e){}
 
+  // Gjett stedet ut fra nettleseren. Gmail kan ikke kjennes igjen, så det må velges for hånd.
+  function gjett(){
+    var app=(m.inApp||'').toLowerCase(), f=m.ios?'iphone':m.android?'android':'';
+    if(!f) return 'pc';
+    if(/instagram|facebook|messenger/.test(app)) return f+'-'+app;
+    return f==='iphone'?'iphone-safari':'android-chrome';
+  }
+  // Valget huskes bare i denne fanen, så det overlever at siden lastes på nytt når du kommer tilbake fra Vipps.
+  var husket=''; try{ husket=sessionStorage.getItem('vj_vippstest_sted')||''; }catch(e){}
+  var sted=new URLSearchParams(location.search).get('sted')||husket||gjett();
+  if(!STEDER.some(function(s){return s[0]===sted;})) sted=gjett();
+  var res={};
+  function nokkel(){ return 'vj_vippstest_'+sted; }
+  function lastRes(){ try{ res=JSON.parse(les(nokkel(),'{}'))||{}; }catch(e){ res={}; } }
+  function stedNavn(){ return STEDER.filter(function(s){return s[0]===sted;})[0][1]; }
+  function plattform(){ return sted.split('-')[0]; }
+
+  $('sted').innerHTML=STEDER.map(function(s){ return '<option value="'+s[0]+'">'+esc(s[1])+'</option>'; }).join('');
+  $('sted').value=sted;
+  $('stedListe').innerHTML=STEDER.map(function(s){ return '<li><b>'+esc(s[1])+'</b><small>'+esc(s[2])+'</small></li>'; }).join('');
+  $('oppdaget').textContent='Siden tror du tester fra: '+m.tekst+'. Velg riktig sted hvis det ikke stemmer. Gmail kan ikke oppdages, så det må du velge selv.';
+  $('ua').textContent=navigator.userAgent;
+  try{ $('nr').value=(new URLSearchParams(location.search).get('nr')||les('vj_vippstest_nr','')).replace(/\D/g,'').slice(0,8); }catch(e){}
+
+  // Varianter som gir mening her: Android-lenken bare på Android, og på PC bare nettadressene (QR-kode).
+  function synlige(){
+    var p=plattform();
+    return VAR.filter(function(v){ return p==='pc'?v.type==='https':p==='iphone'?v.type!=='intent':true; });
+  }
+  // Merkene viser hva takkesiden faktisk velger i denne nettleseren.
+  function valgFor(){ return vjVipps.valg(m); }
   function lenke(v){
     var nr=$('nr').value.replace(/\D/g,''), ore=Math.round(Number(String($('kr').value).replace(',','.'))*100)||0;
     if(v.type==='app') return 'vipps://';
@@ -104,27 +166,70 @@ ol.miljoer li{margin:4px 0}
     return vjVipps.lenker(h)[v.type];
   }
   function tegn(){
-    $('varianter').innerHTML=VAR.map(function(v){
+    var valg=valgFor(), pc=plattform()==='pc';
+    $('varianter').innerHTML=synlige().map(function(v){
       var merke=v.type===valg.hoved&&v.belop&&v.melding?'<span class="merke">Takkesiden bruker denne her</span>':v.type===valg.reserve&&v.belop&&v.melding?'<span class="merke reserve">Reserve på takkesiden</span>':'';
-      var l=lenke(v), qr=!m.mobil&&v.type==='https'?'<div class="qr">'+vjVipps.qrSvg(l)+'</div>':'';
+      var l=lenke(v), qr=pc?'<div class="qr">'+vjVipps.qrSvg(l)+'</div>':'';
       return '<div class="kort variant"><h2>'+esc(v.navn)+merke+'</h2><code>'+esc(l)+'</code>'+qr+
-        (m.mobil?'<a class="proev" href="'+esc(l)+'">Prøv</a>':'')+
+        (pc?'':'<a class="proev" href="'+esc(l)+'">Prøv</a>')+
         '<div class="resultat">'+SVAR.map(function(s){ return '<button type="button" data-v="'+v.id+'" data-s="'+s[0]+'" aria-pressed="'+(res[v.id]===s[0])+'">'+s[1]+'</button>'; }).join('')+'</div></div>';
     }).join('');
-    oppsummer();
+    oppsummer(); visStatus();
   }
   function oppsummer(){
-    var linjer=['Vipps-lenketest: '+m.tekst,'Beløp: '+$('kr').value+' kr, melding: «'+$('melding').value+'»'];
-    VAR.forEach(function(v){ var s=SVAR.filter(function(x){return x[0]===res[v.id];})[0]; linjer.push('- '+v.navn+': '+(s?s[1]:'ikke testet')); });
+    var linjer=['Vipps-lenketest: '+stedNavn()+' (siden oppdaget: '+m.tekst+')','Beløp: '+$('kr').value+' kr, melding: «'+$('melding').value+'»'];
+    synlige().forEach(function(v){ var s=SVAR.filter(function(x){return x[0]===res[v.id];})[0]; linjer.push('- '+v.navn+': '+(s?s[1]:'ikke testet')); });
     linjer.push('Nettleser-ID: '+navigator.userAgent);
     $('sammendrag').value=linjer.join('\n');
   }
+
+  // Innsending. Husker hva som sist ble sendt fra hvert sted, så siden kan si om noe er endret siden.
+  function tilstand(){ return JSON.stringify(synlige().map(function(v){ return res[v.id]||''; })); }
+  function sistSendt(){ return les('vj_vippstest_sendt_'+sted,''); }
+  function visStatus(tekst,klasse){
+    var s=$('sendStatus');
+    if(tekst){ s.textContent=tekst; s.className=klasse||''; return; }
+    var sendt=sistSendt();
+    if(sendt && sendt===tilstand()){ s.textContent='Sendt fra '+stedNavn()+'. Velg neste sted i listen.'; s.className='ok'; }
+    else if(sendt){ s.textContent='Endret siden du sendte. Trykk «Send inn» igjen.'; s.className=''; }
+    else { s.textContent='Ikke sendt ennå fra '+stedNavn()+'.'; s.className=''; }
+  }
+  var sender=false, autoTimer=null;
+  function send(){
+    if(sender) return;
+    if(!synlige().some(function(v){ return res[v.id]; })){ visStatus('Merk minst én variant først.','feil'); return; }
+    sender=true; $('sendInn').disabled=true; visStatus('Sender …');
+    var t=tilstand();
+    vjPost({action:'vippstest',stedId:sted,oppdaget:m.tekst,ua:navigator.userAgent,res:JSON.stringify(res),belop:$('kr').value,melding:$('melding').value})
+      .then(function(d){
+        if(!d||!d.ok) throw new Error(d&&d.error||'Ukjent feil');
+        skriv('vj_vippstest_sendt_'+sted,t);
+        if(d.sendt) visStatus(); else visStatus('Lagret i regnearket, men backend har ingen e-postadresse å sende til. Legg inn VARSEL_EPOST i Skriptegenskaper.','feil');
+      })
+      .catch(function(e){ visStatus('Fikk ikke sendt: '+e.message+' Bruk «Kopier resultatene» nederst.','feil'); })
+      .then(function(){ sender=false; $('sendInn').disabled=false; });
+  }
+  // Sender av seg selv når alle variantene er merket.
+  function autoSend(){
+    clearTimeout(autoTimer);
+    if(!synlige().every(function(v){ return res[v.id]; }) || sistSendt()===tilstand()) return;
+    autoTimer=setTimeout(send,1500);
+  }
+
+  lastRes();
   $('varianter').addEventListener('click',function(e){
     var b=e.target.closest('button[data-v]'); if(!b) return;
-    res[b.dataset.v]=b.dataset.s; try{ localStorage.setItem(NOKKEL,JSON.stringify(res)); }catch(err){}
-    tegn();
+    res[b.dataset.v]=b.dataset.s; skriv(nokkel(),JSON.stringify(res));
+    tegn(); autoSend();
   });
-  ['nr','kr','melding'].forEach(function(id){ $(id).addEventListener('input',function(){ try{ localStorage.setItem('vj_vippstest_nr',$('nr').value); }catch(e){} tegn(); }); });
+  $('sted').addEventListener('change',function(){ sted=$('sted').value; try{ sessionStorage.setItem('vj_vippstest_sted',sted); }catch(e){} lastRes(); tegn(); });
+  ['nr','kr','melding'].forEach(function(id){ $(id).addEventListener('input',function(){ skriv('vj_vippstest_nr',$('nr').value); tegn(); }); });
+  $('sendInn').onclick=send;
+  $('kopierTestlenke').onclick=function(){
+    var nr=$('nr').value.replace(/\D/g,''), u=location.origin+location.pathname+(nr?'?nr='+nr:'');
+    vjVipps.kopier(u).then(function(){ $('kopierTestlenke').textContent='Kopiert! Send den til deg selv der du skal teste.'; })
+      .catch(function(){ $('kopierTestlenke').textContent=u; });
+  };
   $('kopier').onclick=function(){
     vjVipps.kopier($('sammendrag').value).then(function(){ $('kopier').textContent='Kopiert!'; setTimeout(function(){ $('kopier').textContent='Kopier resultatene'; },2500); })
       .catch(function(){ $('sammendrag').select(); });
