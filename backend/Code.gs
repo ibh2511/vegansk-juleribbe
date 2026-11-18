@@ -1330,14 +1330,11 @@ function adminInnstillinger_(p) {
     var nr = String(p.nr || '').replace(/\D/g, '');
     if (nr.length === 10 && nr.indexOf('47') === 0) nr = nr.slice(2);
     if (nr && !/^[49]\d{7}$/.test(nr)) return { ok: false, error: 'Mobilnummeret må ha 8 sifre og starte på 4 eller 9.' };
-    var tall = function (v) { v = String(v == null ? '' : v).replace(',', '.').trim(); return v === '' ? '' : (isFinite(Number(v)) && Number(v) >= 0 ? v : null); };
-    var pst = tall(p.gebyrProsent), fast = tall(p.gebyrKr);
-    if (pst === null || fast === null) return { ok: false, error: 'Gebyret må være tall, for eksempel 2,99 og 1.' };
     var betaling = p.betaling === 'privat' ? 'privat' : 'bedrift';
     if (betaling === 'privat' && !nr) return { ok: false, error: 'Legg inn mobilnummeret kundene skal vippse til før du bytter til Vipps privat.' };
     if (betaling === 'bedrift' && !harVippsNokler_()) return { ok: false, error: 'Vipps bedrift mangler nøkler i Skriptegenskaper (VIPPS_CLIENT_ID, VIPPS_CLIENT_SECRET, VIPPS_SUBSCRIPTION_KEY, VIPPS_MSN).' };
-    props.setProperties({ BETALING: betaling, VIPPS_PRIVAT_NR: nr, VIPPS_LENKE_UTFYLT: p.utfylt === false || p.utfylt === 'nei' ? 'nei' : 'ja',
-      GEBYR_PROSENT: pst, GEBYR_KR: fast });
+    // Gebyret for Vipps bedrift settes ikke her: satsen fra avtalen står i GEBYR_STANDARD (kan overstyres i Skriptegenskaper).
+    props.setProperties({ BETALING: betaling, VIPPS_PRIVAT_NR: nr, VIPPS_LENKE_UTFYLT: p.utfylt === false || p.utfylt === 'nei' ? 'nei' : 'ja' });
     if (betaling === 'privat') sikreBankUtloser_();
   }
   return { ok: true, innstillinger: innstillinger_() };

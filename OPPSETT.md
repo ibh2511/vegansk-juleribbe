@@ -107,7 +107,7 @@ Med `VIPPS_ENV=test`:
 
 I adminpanelet under **Betalingsløsning** velger du mellom:
 
-- **Vipps bedrift:** Betaling på nett med Vipps-avtalen, som beskrevet over. Vipps tar et gebyr per salg. Legg inn satsen fra avtalen (prosent og eventuelt kroner per salg), så viser adminpanelet gebyr og netto.
+- **Vipps bedrift:** Betaling på nett med Vipps-avtalen, som beskrevet over. Vipps tar et gebyr per salg. Satsen fra avtalen, 2,99 % + 1 kr, er lagt inn i koden, så adminpanelet viser gebyr og netto. Endrer Vipps satsen, legger du `GEBYR_PROSENT` (for eksempel `2.99`) og `GEBYR_KR` (for eksempel `1`) i Skriptegenskaper.
 - **Vipps privat:** Kunden skriver navn og e-post, får et ordrenummer og vippser til mobilnummeret du legger inn. Backend leser innbetalingene på kontoen din i SpareBank 1 og kobler dem til ordren på navn og beløp. Når betalingen er funnet, får kunden kvitteringen med heftet.
 
 Byttet gjelder med en gang på nettsiden. Tabellen **Salg per betalingsløsning** viser salg, omsetning, gebyr og netto for hver av dem.

@@ -125,7 +125,6 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
       <h2>Salg per betalingsløsning</h2>
       <p class="hint">Gebyr gjelder bare Vipps bedrift. Med Vipps privat går hele beløpet til kontoen.</p>
       <div class="tabell"><table id="perBetaling"></table></div>
-      <p class="hint" id="gebyrHint" style="margin:10px 0 0" hidden></p>
     </div>
 
     <div class="panel" id="ventePanel" hidden>
@@ -183,11 +182,7 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
         <label class="hake"><input type="checkbox" id="iUtfylt">Fyll ut beløp og melding i Vipps-lenken</label>
       </div>
       <div data-for="bedrift">
-        <div class="felt-rad">
-          <label>Gebyr for Vipps bedrift, i prosent<input id="iPst" inputmode="decimal" placeholder="2,99" autocomplete="off"></label>
-          <label>Fast gebyr per salg med Vipps bedrift (kr)<input id="iKr" inputmode="decimal" placeholder="1" autocomplete="off"></label>
-        </div>
-        <p class="hint">Satsen fra avtalen din er 2,99 % + 1 kr. Den lagres på hvert nye salg med Vipps bedrift, og brukes også for eldre salg som ikke har lagret gebyr.</p>
+        <p class="hint" id="gebyrSats"></p>
       </div>
       <div class="lag"><button class="btn" type="button" id="lagreInnst">Lagre</button></div>
       <p class="testsvar" id="innstSvar" hidden></p>
@@ -302,9 +297,6 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
       rad('Vipps bedrift'+(aktiv==='bedrift'?'<span class="chip">I bruk</span>':''),pb.bedrift)+
       rad('Vipps privat'+(aktiv==='privat'?'<span class="chip">I bruk</span>':''),pb.privat,'',true)+
       rad('Totalt',sum,' class="sum"')+'</tbody>';
-    var harSats=inn.gebyrProsent||inn.gebyrKr;
-    $('gebyrHint').hidden=!!harSats || !pb.bedrift.salg;
-    $('gebyrHint').innerHTML='<span class="chip advarsel">Mangler sats</span> Legg inn gebyrsatsen under «Betalingsløsning», så regnes gebyr og netto ut.';
 
     var vent=data.ventende||[], um=data.umatchede||[];
     $('ventePanel').hidden=!vent.length && !um.length && aktiv!=='privat';
@@ -340,7 +332,8 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
     document.querySelectorAll('input[name=betaling]').forEach(function(r){ r.checked=r.value===inn.betaling; });
     visFelter();
     $('iNr').value=inn.nr||''; $('iUtfylt').checked=inn.utfylt!==false;
-    $('iPst').value=String(inn.gebyrProsent||'').replace('.',','); $('iKr').value=String(inn.gebyrKr||'').replace('.',',');
+    // Gebyret er satsen fra Vipps-avtalen og står fast i koden. Endres den, legger du GEBYR_PROSENT og GEBYR_KR i Skriptegenskaper.
+    $('gebyrSats').textContent='Vipps tar '+String(inn.gebyrProsent||'0').replace('.',',')+' % + '+String(inn.gebyrKr||'0').replace('.',',')+' kr per salg, etter avtalen din. Gebyret lagres på hvert salg og trekkes fra i salgsoversikten.';
     $('bedriftStatus').className=inn.bedriftKlar?'ok':'mangler';
     $('bedriftStatus').textContent=inn.bedriftKlar?('Nøklene er lagt inn'+(inn.vippsEnv==='prod'?'':' (testmiljø)')):'Mangler Vipps-nøkler i Skriptegenskaper';
     var b=inn.bank||{};
@@ -470,13 +463,12 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
     }).catch(function(){ b.disabled=false; b.textContent=knapp; svar.className='testsvar feil'; svar.textContent='Fikk ikke kontakt med backend.'; svar.hidden=false; });
   };
   // Betalingsløsning
-  ['iNr','iPst','iKr','iUtfylt'].forEach(function(id){ $(id).addEventListener('input',function(){ innstillingerRort=true; }); });
+  ['iNr','iUtfylt'].forEach(function(id){ $(id).addEventListener('input',function(){ innstillingerRort=true; }); });
   document.querySelectorAll('input[name=betaling]').forEach(function(r){ r.addEventListener('change',function(){ innstillingerRort=true; visFelter(); }); });
   $('lagreInnst').onclick=function(){
     var valgt=document.querySelector('input[name=betaling]:checked'), b=$('lagreInnst');
     b.disabled=true; b.textContent='Lagrer …';
-    adminKall({action:'innstillinger',lagre:true,betaling:valgt?valgt.value:'bedrift',nr:$('iNr').value,utfylt:$('iUtfylt').checked,
-      gebyrProsent:$('iPst').value,gebyrKr:$('iKr').value},'innstSvar').then(function(d){
+    adminKall({action:'innstillinger',lagre:true,betaling:valgt?valgt.value:'bedrift',nr:$('iNr').value,utfylt:$('iUtfylt').checked},'innstSvar').then(function(d){
       innstillingerRort=false; data.innstillinger=d.innstillinger; fyllInnstillinger(d.innstillinger);
       svarBoks('innstSvar','Lagret. Nettsiden bruker nå '+LOSNING[d.innstillinger.betaling]+'.'); hent();
     }).catch(function(){}).then(function(){ b.disabled=false; b.textContent='Lagre'; });
