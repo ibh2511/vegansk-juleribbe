@@ -524,6 +524,8 @@ skjema.addEventListener('submit',function(e){
     .then(function(d){
       if(d.redirectUrl){ location.href=d.redirectUrl; return; } // byttet til Vipps bedrift mens siden var åpen
       if(!d.ok||!d.takkUrl) throw new Error(d.error||'');
+      // Takkesiden viser betalingsboksen med en gang fra dette, og sjekker status i bakgrunnen.
+      try{ if(d.info) sessionStorage.setItem('vj_betaling_'+d.ordre,JSON.stringify(d.info)); }catch(e){}
       location.href=d.takkUrl;
     })
     .catch(function(err){ knapp.disabled=false; knapp.textContent='Gå til betaling'; feil(err&&err.message&&err.message.length<120?err.message:'Vi fikk ikke kontakt. Prøv igjen om litt.'); });

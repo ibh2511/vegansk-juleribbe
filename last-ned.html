@@ -63,7 +63,7 @@
   }
   knapp.onclick=function(){
     knapp.disabled=true; knapp.textContent='Lager heftet ditt …';
-    vjGet({action:'download',t:t}).then(function(d){
+    vjGet({action:'download',t:t},120000).then(function(d){
       if(!d.ok){ info.textContent=d.melding||'Lenken virker ikke.'; knapp.textContent='Last ned heftet (PDF)'; ny.hidden=false; return; }
       var bin=atob(d.pdf), arr=new Uint8Array(bin.length);
       for(var i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);

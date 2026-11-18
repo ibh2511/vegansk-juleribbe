@@ -379,7 +379,8 @@ function createPrivat_(p) {
   var site = cfg_('SITE_URL').replace(/\/$/, '');
   var takkUrl = site + '/takk.html?ordre=' + encodeURIComponent(row.ordre) + '&k=' + row.nokkel;
   try { sendBetalingMail_(row, nr, takkUrl); } catch (err) { console.error('Betalings-e-post feilet for ' + row.ordre + ': ' + err); }
-  return { ok: true, ordre: row.ordre, k: row.nokkel, takkUrl: takkUrl, betaling: 'privat' };
+  // Betalingsinfoen følger med, så takkesiden kan vise «Åpne Vipps» med en gang, uten å vente på et nytt kall.
+  return { ok: true, ordre: row.ordre, k: row.nokkel, takkUrl: takkUrl, betaling: 'privat', info: venterSvar_(row) };
 }
 
 function vippsMelding_(ordre) { return 'Juleribbe ' + ordre; }
@@ -399,11 +400,16 @@ function statusPrivat_(o, sjekkBanken) {
     o = findOrder_('ordre', o.data.ordre);
     if (o.data.status === 'BETALT') return betalt(o.data);
   }
-  var nr = privatNr_(), ore = Math.round(Number(o.data.belop) * 100);
+  return venterSvar_(o.data);
+}
+
+/** Det takkesiden trenger for å vise betalingsboksen. Sendes både fra kjøpet og fra statuskallet. */
+function venterSvar_(d) {
+  var nr = privatNr_(), ore = Math.round(Number(d.belop) * 100);
   return {
-    ok: true, status: 'VENTER_BANK', betaling: 'privat', ordre: o.data.ordre, belop: Number(o.data.belop),
-    nr: nr, mottaker: formatPhone_(nr), navn: o.data.vipps_navn || o.data.navn, epost: maskEmail_(o.data.epost),
-    lenke: vippsLenke_(nr, ore, vippsMelding_(o.data.ordre)), melding: vippsMelding_(o.data.ordre),
+    ok: true, status: 'VENTER_BANK', betaling: 'privat', ordre: d.ordre, belop: Number(d.belop),
+    nr: nr, mottaker: formatPhone_(nr), navn: d.vipps_navn || d.navn, epost: maskEmail_(d.epost),
+    lenke: vippsLenke_(nr, ore, vippsMelding_(d.ordre)), melding: vippsMelding_(d.ordre),
     automatisk: bankKlar_()
   };
 }

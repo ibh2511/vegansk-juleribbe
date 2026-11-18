@@ -1,14 +1,30 @@
 // Felles hjelpere: kall til backend og anonym besøkstelling (ingen informasjonskapsler)
 (function () {
   function qs(o) { return Object.keys(o).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(o[k] == null ? '' : o[k]); }).join('&'); }
-  window.vjGet = function (params) {
+  // Et kall som henger, gir opp etter 30 sekunder (eller ms) i stedet for å la siden vente for alltid.
+  // Svarer backend med noe annet enn JSON (f.eks. en feilside fra Google), blir det en lesbar feilmelding.
+  function hent(url, opt, ms) {
+    ms = ms || 30000;
+    var ctrl = window.AbortController ? new AbortController() : null, t = null;
+    if (ctrl) { opt.signal = ctrl.signal; t = setTimeout(function () { ctrl.abort(); }, ms); }
+    return fetch(url, opt).then(function (r) {
+      return r.text().then(function (tekst) {
+        try { return JSON.parse(tekst); } catch (e) {
+          var tittel = (tekst.match(/<title>([^<]*)<\/title>/i) || [])[1];
+          throw new Error('Uventet svar fra serveren (HTTP ' + r.status + (tittel ? ': ' + tittel.trim() : '') + ')');
+        }
+      });
+    }, function (e) {
+      throw new Error(e && e.name === 'AbortError' ? 'Serveren svarte ikke innen ' + Math.round(ms / 1000) + ' sekunder' : 'Fikk ikke kontakt med serveren (' + (e && e.message || e) + ')');
+    }).finally(function () { clearTimeout(t); });
+  }
+  window.vjGet = function (params, ms) {
     if (!window.VJ_API) return Promise.reject(new Error('API ikke satt opp'));
-    return fetch(window.VJ_API + '?' + qs(params), { redirect: 'follow' }).then(function (r) { return r.json(); });
+    return hent(window.VJ_API + '?' + qs(params), { redirect: 'follow' }, ms);
   };
-  window.vjPost = function (params) {
+  window.vjPost = function (params, ms) {
     if (!window.VJ_API) return Promise.reject(new Error('API ikke satt opp'));
-    return fetch(window.VJ_API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(params) })
-      .then(function (r) { return r.json(); });
+    return hent(window.VJ_API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(params) }, ms);
   };
   // Husker kampanje, samarbeidslenke (?fra=navn) og nettsiden kunden kom fra, så kjøpet kan knyttes til riktig kilde.
   window.vjUtm = function () {
