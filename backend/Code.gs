@@ -558,6 +558,17 @@ function finnOrdreForBetaling_(t, ventende) {
   return null;
 }
 
+/**
+ * Betaling til et annet arrangement på samme Vipps-nummer, som juletreffet på KUMI (JT-1001). Vipps privat
+ * sender alt til samme bankkonto, så begge backendene ser de samme innbetalingene. Den med den andres nummer
+ * eller navn i meldingen hoppes over, også når navn og beløp passer med en ordre her.
+ */
+function annetArrangement_(tekst) {
+  var t = String(tekst || '');
+  if (/\b(VJ|TEST)[\s-]?\d{5,}/i.test(t)) return false;
+  return /\bJT[\s-]?\d{4,}/i.test(t) || /juletreff/i.test(t);
+}
+
 /** Minst ett av navnene (tre bokstaver eller mer) står i bankteksten. */
 function delvisNavnTreff_(navn, tekst) {
   var t = ' ' + navnOrd_(tekst).join(' ') + ' ';
@@ -896,7 +907,7 @@ function sjekkBank_() {
       sett[t.id] = 1; nye++;
     };
     trans.forEach(function (t) {
-      if (!(t.belop > 0) || sett[t.id]) return;
+      if (!(t.belop > 0) || sett[t.id] || annetArrangement_(t.tekst)) return;
       if (!priser[ore_(t.belop)]) {
         var kunde = kundeForBetaling_(t, ventende);
         if (!kunde) return; // en vanlig vipps som ikke gjelder heftet
