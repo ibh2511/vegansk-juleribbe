@@ -426,6 +426,10 @@ function pollPending() {
 /* ------------------------------------------------------------------ */
 
 var PRIVAT_TIMER = 48; // så lenge en ubetalt ordre kan kobles automatisk
+// Hvor ofte utløseren spør banken. Google gir 90 minutter utløsertid per døgn, delt med juletreff-skriptet
+// på samme konto, så hvert minutt bare de første timene etter en ordre, deretter hvert 5. minutt.
+var BANK_STRAKS_TIMER = 2;
+var BANK_OFTE_MIN = 5;
 // E-posten med betalingsinfo sendes først når betalingen ikke har kommet etter så mange minutter.
 // Betaler kunden med en gang, får de bare kvitteringen med heftet.
 var EPOST_VENT_MIN = 5;
@@ -457,7 +461,10 @@ function createPrivat_(p) {
     if (bankKlar_()) row.info_sendt = 'venter'; // sendes av utløseren hvis betalingen ikke kommer
     sheet_(ORDRE_ARK).appendRow(ORDRE_KOLONNER.map(function (k) { return celle_(row[k]); }));
     // Utløseren spør banken bare så lenge noen venter på betaling.
-    PropertiesService.getScriptProperties().setProperty('BANK_VENTER_TIL', String(Date.now() + PRIVAT_TIMER * 36e5));
+    PropertiesService.getScriptProperties().setProperties({
+      BANK_STRAKS_TIL: String(Date.now() + BANK_STRAKS_TIMER * 36e5),
+      BANK_VENTER_TIL: String(Date.now() + PRIVAT_TIMER * 36e5)
+    });
   } finally { lock.releaseLock(); }
 
   var site = cfg_('SITE_URL').replace(/\/$/, '');
@@ -969,10 +976,28 @@ function sjekkBankUtloser() {
     varsle_(v.emne, v.tekst);
   }
   if (Date.now() > Number(props.getProperty('BANK_VENTER_TIL') || 0) || !bankKlar_()) return;
-  CacheService.getScriptCache().put('bank_sist', '1', 20);
+  var cache = CacheService.getScriptCache();
+  if (Date.now() > Number(props.getProperty('BANK_STRAKS_TIL') || 0)) {
+    if (cache.get('bank_neste')) return;
+    cache.put('bank_neste', '1', BANK_OFTE_MIN * 60 - 30);
+  }
+  // Har alle betalt, trengs ikke banken før neste ordre.
+  if (!harUbetaltPrivat_()) return;
+  cache.put('bank_sist', '1', 20);
   sjekkBank_();
   // Etter banksjekken, så den som nettopp betalte, får kvitteringen og ikke betalingsinfo.
   try { sendVentendeBetalingsinfo_(EPOST_VENT_MIN); } catch (err) { console.error(err); }
+}
+
+function harUbetaltPrivat_() {
+  var vals = sheet_(ORDRE_ARK).getDataRange().getValues(), O = {};
+  ORDRE_KOLONNER.forEach(function (k, i) { O[k] = i; });
+  var grense = Date.now() - PRIVAT_TIMER * 36e5;
+  for (var i = vals.length - 1; i >= 1; i--) {
+    var v = vals[i];
+    if (v[O.betaling] === 'privat' && v[O.status] === 'VENTER_BANK' && new Date(v[O.opprettet]).getTime() > grense) return true;
+  }
+  return false;
 }
 
 /**
