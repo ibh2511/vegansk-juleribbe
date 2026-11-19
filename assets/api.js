@@ -47,11 +47,15 @@
   window.vjInApp = function () {
     var ua = navigator.userAgent || '';
     var ios = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
-    // Messenger må sjekkes før Facebook, fordi Messenger også har Facebook-merker i nettleser-ID-en
-    var app = /Instagram/i.test(ua) ? 'Instagram' : /Messenger|Orca-Android|FBAN\/(MessengerForiOS|MessengerLiteForiOS)/i.test(ua) ? 'Messenger' :
+    // Messenger må sjekkes før Facebook, fordi Messenger også har Facebook-merker i nettleser-ID-en.
+    // Threads heter «Barcelona» i nettleser-ID-en.
+    var app = /Instagram/i.test(ua) ? 'Instagram' : /Barcelona/.test(ua) ? 'Threads' : /Messenger|Orca-Android|FBAN\/(MessengerForiOS|MessengerLiteForiOS)/i.test(ua) ? 'Messenger' :
       /FBAN|FBAV|FB_IAB|FBIOS|FB4A/i.test(ua) ? 'Facebook' :
       /TikTok|musical_ly|Bytedance/i.test(ua) ? 'TikTok' : /Snapchat/i.test(ua) ? 'Snapchat' : /LinkedInApp/i.test(ua) ? 'LinkedIn' :
-      /Pinterest/i.test(ua) ? 'Pinterest' : /; wv\)/.test(ua) ? 'appen' : '';
+      /Pinterest/i.test(ua) ? 'Pinterest' : /; wv\)/.test(ua) ? 'appen' :
+      // Andre apper på iPhone: Safari, Chrome, Firefox og Edge har «Safari/» i nettleser-ID-en, nettleseren inne i apper har det ikke.
+      // Unntaket er nettsider lagt til på hjemskjermen (standalone), som heller ikke har det.
+      ios && !/Safari\//.test(ua) && !navigator.standalone ? 'appen' : '';
     return app ? { app: app, ios: ios } : null;
   };
   // Lenke som åpner samme side i telefonens vanlige nettleser (Safari på iPhone fra iOS 17, Chrome på Android)

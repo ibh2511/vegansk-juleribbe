@@ -244,6 +244,9 @@ footer a{color:var(--cream)}
 /* Kjøpsskjema for Vipps privat (navn og e-post før betaling) */
 dialog.skjema{border:0;padding:0;background:transparent;max-width:440px;width:calc(100% - 32px);margin:auto}
 dialog.skjema::backdrop{background:rgba(42,29,23,.55)}
+/* Eldre telefoner uten <dialog> (iOS før 15.4): skjemaet skjules til det åpnes, og vises da midt på skjermen */
+dialog.skjema:not([open]){display:none}
+dialog.skjema.uten-modal[open]{display:block;position:fixed;top:16px;left:0;right:0;margin:0 auto;max-height:calc(100% - 32px);overflow:auto;z-index:60;box-shadow:0 0 0 100vmax rgba(42,29,23,.55)}
 .skjema form{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:26px 22px 20px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
 .skjema h2{font-size:28px;margin:0 30px 6px 0}
 .skjema .sub{color:var(--muted);margin:0 0 16px;font-size:16px}
@@ -505,7 +508,7 @@ var dlg=document.getElementById('kjopsskjema'), skjema=document.getElementById('
 function visSkjema(){
   try{ var lagret=JSON.parse(sessionStorage.getItem('vj_kunde')||'{}'); if(lagret.navn) skjema.navn.value=lagret.navn; if(lagret.epost) skjema.epost.value=lagret.epost; }catch(e){}
   sFeil.hidden=true;
-  if(dlg.showModal) dlg.showModal(); else dlg.setAttribute('open','');
+  if(dlg.showModal) dlg.showModal(); else { dlg.classList.add('uten-modal'); dlg.setAttribute('open',''); }
   setTimeout(function(){ (skjema.navn.value?skjema.epost:skjema.navn).focus(); },50);
 }
 function lukkSkjema(){ if(dlg.close) dlg.close(); else dlg.removeAttribute('open'); }

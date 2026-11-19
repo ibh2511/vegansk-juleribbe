@@ -43,8 +43,15 @@
     return { hoved: 'https', reserve: 'vipps' };
   }
 
+  // Nettleseren inne i apper (særlig på Android) nekter ofte navigator.clipboard. Da prøver vi den gamle måten.
   function kopier(tekst) {
-    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(tekst);
+    if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+      return navigator.clipboard.writeText(tekst).catch(function () { return kopierGammel(tekst); });
+    }
+    return kopierGammel(tekst);
+  }
+
+  function kopierGammel(tekst) {
     return new Promise(function (ok, feil) {
       var t = document.createElement('textarea');
       t.value = tekst; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
