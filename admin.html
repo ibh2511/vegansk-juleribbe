@@ -179,7 +179,6 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
       </div>
       <div class="felt-rad" data-for="privat">
         <label>Mobilnummer kundene vippser til<input id="iNr" inputmode="numeric" maxlength="15" placeholder="912 34 567" autocomplete="off"></label>
-        <label class="hake"><input type="checkbox" id="iUtfylt">Fyll ut beløp og melding i Vipps-lenken</label>
       </div>
       <div data-for="bedrift">
         <p class="hint" id="gebyrSats"></p>
@@ -344,7 +343,7 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
   function fyllInnstillinger(inn){
     document.querySelectorAll('input[name=betaling]').forEach(function(r){ r.checked=r.value===inn.betaling; });
     visFelter();
-    $('iNr').value=inn.nr||''; $('iUtfylt').checked=inn.utfylt!==false;
+    $('iNr').value=inn.nr||'';
     // Gebyret er satsen fra Vipps-avtalen og står fast i backend-koden (GEBYR_PROSENT og GEBYR_KR i Code.gs).
     $('gebyrSats').textContent='Vipps tar '+String(inn.gebyrProsent||'0').replace('.',',')+' % + '+String(inn.gebyrKr||'0').replace('.',',')+' kr per salg, etter avtalen din. Gebyret lagres på hvert salg og trekkes fra i salgsoversikten.';
     $('bedriftStatus').className=inn.bedriftKlar?'ok':'mangler';
@@ -476,12 +475,12 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
     }).catch(function(){ b.disabled=false; b.textContent=knapp; svar.className='testsvar feil'; svar.textContent='Fikk ikke kontakt med backend.'; svar.hidden=false; });
   };
   // Betalingsløsning
-  ['iNr','iUtfylt'].forEach(function(id){ $(id).addEventListener('input',function(){ innstillingerRort=true; }); });
+  ['iNr'].forEach(function(id){ $(id).addEventListener('input',function(){ innstillingerRort=true; }); });
   document.querySelectorAll('input[name=betaling]').forEach(function(r){ r.addEventListener('change',function(){ innstillingerRort=true; visFelter(); }); });
   $('lagreInnst').onclick=function(){
     var valgt=document.querySelector('input[name=betaling]:checked'), b=$('lagreInnst');
     b.disabled=true; b.textContent='Lagrer …';
-    adminKall({action:'innstillinger',lagre:true,betaling:valgt?valgt.value:'bedrift',nr:$('iNr').value,utfylt:$('iUtfylt').checked},'innstSvar').then(function(d){
+    adminKall({action:'innstillinger',lagre:true,betaling:valgt?valgt.value:'bedrift',nr:$('iNr').value},'innstSvar').then(function(d){
       innstillingerRort=false; data.innstillinger=d.innstillinger; fyllInnstillinger(d.innstillinger);
       svarBoks('innstSvar','Lagret. Nettsiden bruker nå '+LOSNING[d.innstillinger.betaling]+'.'); hent();
     }).catch(function(){}).then(function(){ b.disabled=false; b.textContent='Lagre'; });
