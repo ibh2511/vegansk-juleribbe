@@ -33,7 +33,13 @@
 .knapp-liten.ok{background:var(--green);color:var(--cream)}
 .btn.vipps{background:var(--vipps);width:100%;margin-top:10px;box-shadow:0 6px 18px rgba(255,91,36,.3)}
 .reserve{display:inline-block;margin-top:10px;font-size:14.5px}
-.belop-stor{font-family:"Playfair Display",Georgia,serif;font-size:26px;font-weight:700;color:var(--ink);margin-top:6px}
+/* PC: nummer og beløp under QR-koden, som to rader */
+.fakta{margin:8px 0 0}
+.fakta>div{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;min-height:54px;padding:6px 0;border-top:1px solid var(--line)}
+.fakta>div:first-child{border-top:0}
+.fakta dt{color:var(--muted);font-size:15px}
+.fakta dd{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0;font-family:"Playfair Display",Georgia,serif;font-size:24px;font-weight:700;color:var(--ink)}
+.fakta .tlf{font-size:24px}
 .qr{display:grid;grid-template-columns:180px 1fr;gap:18px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
 .qr svg{width:180px;height:180px;display:block}
 .qr b{display:block;font-size:18px;color:var(--ink);line-height:1.3}
@@ -46,7 +52,7 @@
 .prikk{width:10px;height:10px;border-radius:50%;background:var(--vipps);animation:puls 1.4s ease-in-out infinite}
 @keyframes puls{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
 .liten-feil{color:var(--red-dark);font-size:14px;text-align:center;margin-top:8px}
-.har-betalt{display:block;margin:16px auto 0;font:inherit;font-weight:700;font-size:16px;border:1.5px solid var(--green);color:var(--green);background:#fff;border-radius:999px;padding:10px 22px;cursor:pointer;min-height:46px}
+.venter-hint{margin:4px 0 0!important;text-align:center;color:var(--muted);font-size:14.5px}
 .sjekker{text-align:center}
 .sjekker-ikon{width:64px;height:64px;margin:14px auto 6px;border-radius:50%;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
 .sjekker-ikon .prikk{width:18px;height:18px}
@@ -70,8 +76,12 @@
   var boks=document.getElementById('boks');
   var q=new URLSearchParams(location.search), ordre=q.get('ordre')||'', k=q.get('k')||'';
   var forsok=0, feilPaRad=0, privat=null, startet=Date.now(), timer=null;
-  // Har kunden trykket «Jeg har betalt» eller kommet tilbake fra Vipps, viser siden «Vi ser etter betalingen din»
-  // i stedet for betalingsstegene, så ingen tror de må betale på nytt. Huskes om siden lastes på nytt.
+  // Siden kan ikke vite at kunden har betalt før banken viser betalingen. Fram til da er det én tilstand,
+  // «ikke registrert ennå», som vises på to måter: betalingsstegene, eller «Vi ser etter betalingen din» når
+  // kunden kommer tilbake til siden etter å ha trykket «Åpne Vipps» eller kopiert nummeret. Da har de mest
+  // sannsynlig betalt, og stegene med «Åpne Vipps» øverst kunne fått dem til å betale igjen. Teksten sier
+  // «Har du betalt …», så den stemmer også for den som ikke betalte, og stegene er ett trykk unna.
+  // Huskes om siden lastes på nytt.
   var betaltNokkel='vj_betalt_'+ordre, venterFra=0, forlot=false;
   try{ venterFra=Number(sessionStorage.getItem(betaltNokkel)||0); }catch(e){}
   function vis(html){ boks.innerHTML=html; }
@@ -105,18 +115,19 @@
       '</ol>';
     } else {
       var svg=vjVipps.qrSvg(d.lenke);
-      trinn=(svg?'<div class="qr">'+svg+'<div><b>Skann QR-koden med kameraet på mobilen</b><small style="display:block;color:var(--muted);margin-top:6px">Da åpnes Vipps med nummeret fylt ut. Skriv inn '+esc(kr)+' og betal, så dukker heftet opp her.</small></div></div>':'')+
+      var qrTekst='Da åpnes Vipps med nummeret fylt ut. Skriv inn '+esc(kr)+' og betal'+(d.automatisk?', så dukker heftet opp her.':'. Heftet kommer på e-post når betalingen er registrert.');
+      trinn=(svg?'<div class="qr">'+svg+'<div><b>Skann QR-koden med kameraet på mobilen</b><small style="display:block;color:var(--muted);margin-top:6px">'+qrTekst+'</small></div></div>':'')+
         '<ol class="trinn">'+
         '<li class="enkel"><div><b>'+(svg?'Eller betal selv i Vipps på mobilen':'Betal i Vipps på mobilen')+'</b>'+
-          '<div class="kopier"><span class="tlf">'+esc(d.mottaker)+'</span><button class="knapp-liten" type="button" id="kopier">Kopier</button></div>'+
-          '<div class="belop-stor">'+esc(kr)+'</div><small>'+naar+'</small></div></li>'+
+          '<dl class="fakta"><div><dt>Mobilnummer</dt><dd><span class="tlf">'+esc(d.mottaker)+'</span><button class="knapp-liten" type="button" id="kopier">Kopier</button></dd></div>'+
+          '<div><dt>Beløp</dt><dd>'+esc(kr)+'</dd></div></dl>'+
+          (svg?'':'<small>'+naar+'</small>')+'</div></li>'+
       '</ol>';
     }
     var kommer=d.automatisk?'Heftet dukker opp her og kommer på e-post så snart betalingen er registrert, vanligvis i løpet av få minutter.':'Heftet kommer på e-post så snart betalingen er registrert.';
     boks.className='box betal';
     vis('<div id="betalDel"><span class="eyebrow">Ordre '+esc(d.ordre)+'</span><h1>Betal '+esc(kr)+' med Vipps</h1>'+
-      '<p class="ingress">Heftet kommer her og på e-post så snart betalingen er registrert.</p>'+trinn+
-      '<button class="har-betalt" type="button" id="harBetalt">Jeg har betalt</button></div>'+
+      '<p class="ingress">Heftet kommer her og på e-post så snart betalingen er registrert.</p>'+trinn+'</div>'+
       '<div id="venteDel" class="sjekker" hidden><span class="eyebrow">Ordre '+esc(d.ordre)+'</span>'+
         '<div class="sjekker-ikon" aria-hidden="true"><span class="prikk"></span></div>'+
         '<h1>Vi ser etter betalingen din</h1>'+
@@ -128,16 +139,15 @@
         '<button type="button" id="endre">Betaler du fra en annens Vipps?</button></p>'+
       '<form class="nytt-navn" id="nyttNavn" hidden><input id="navnFelt" autocomplete="off" placeholder="Fullt navn på Vipps-kontoen" maxlength="80" required>'+
         '<button class="btn" type="submit">Lagre</button></form><p class="liten-feil" id="navnFeil" hidden></p>'+
-      '<div class="venter" role="status"><span class="prikk" aria-hidden="true"></span><span id="venterTekst">Venter på betalingen …</span></div>'+
+      '<div id="statusDel"><div class="venter" role="status"><span class="prikk" aria-hidden="true"></span><span id="venterTekst">Venter på betalingen …</span></div>'+
+        '<p class="venter-hint">Har du betalt, trenger du ikke gjøre noe mer.</p></div>'+
       '<p class="liten-feil" id="sjekkFeil" hidden></p>');
     privat=d; // først når boksen faktisk er tegnet
-    document.getElementById('harBetalt').onclick=harBetalt;
     document.getElementById('visBetaling').onclick=function(){
       venterFra=0; try{ sessionStorage.removeItem(betaltNokkel); }catch(e){}
       visModus(); window.scrollTo(0,0);
     };
-    ['aapne'].forEach(function(id){ var a=document.getElementById(id); if(a) a.addEventListener('click',function(){ forlot=true; }); });
-    var res=boks.querySelector('.reserve'); if(res) res.addEventListener('click',function(){ forlot=true; });
+    [document.getElementById('aapne'), boks.querySelector('.reserve')].forEach(function(a){ if(a) a.addEventListener('click',function(){ forlot=true; }); });
     visModus();
     var kb=document.getElementById('kopier');
     if(kb) kb.onclick=function(){
@@ -156,12 +166,12 @@
     };
   }
 
-  function harBetalt(){
+  function visVenting(){
     if(!venterFra){ venterFra=Date.now(); try{ sessionStorage.setItem(betaltNokkel,String(venterFra)); }catch(e){} }
     visModus(); window.scrollTo(0,0); planlegg(300);
   }
   function visModus(){
-    var b=document.getElementById('betalDel'), v=document.getElementById('venteDel'), st=boks.querySelector('.venter');
+    var b=document.getElementById('betalDel'), v=document.getElementById('venteDel'), st=document.getElementById('statusDel');
     if(!b||!v) return;
     b.hidden=!!venterFra; v.hidden=!venterFra; if(st) st.hidden=!!venterFra;
     var ft=document.getElementById('fraTekst'), en=document.getElementById('endre');
@@ -211,7 +221,7 @@
   }
   // Kunden kommer tilbake fra Vipps-appen: sjekk med en gang i stedet for å vente på neste runde.
   document.addEventListener('visibilitychange',function(){
-    if(document.visibilityState==='visible' && privat && forlot){ forlot=false; harBetalt(); return; }
+    if(document.visibilityState==='visible' && privat && forlot){ forlot=false; visVenting(); return; }
     if(document.visibilityState==='visible' && privat){ var t=document.getElementById('venterTekst'); if(t) t.textContent='Ser om betalingen har kommet …'; planlegg(300); setTimeout(function(){ if(t) t.textContent='Venter på betalingen …'; },4000); }
   });
   // Kommer kunden rett fra kjøpet, har forsiden lagt igjen betalingsinfoen. Da vises «Åpne Vipps» med en gang.
