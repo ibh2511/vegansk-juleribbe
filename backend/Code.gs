@@ -150,17 +150,17 @@ function harVippsNokler_() {
 function privatNr_() { return String(cfg_('VIPPS_PRIVAT_NR', '')).replace(/\D/g, ''); }
 
 /**
- * Lenke som åpner Vipps med mottaker (og beløp og melding) fylt ut. Samme format som Vipps bruker i
- * QR-kodene for privatpersoner. Formatet er ikke offisielt dokumentert, så det kan slås av i admin
- * (VIPPS_LENKE_UTFYLT=nei), og da fylles bare nummeret ut. Beløpet er i øre.
+ * Lenke (og QR-kode) som åpner Vipps med mottakeren fylt ut. Formatet er det Vipps dokumenterer for
+ * personlige QR-koder i Norge, med landskoden 47 foran mobilnummeret:
+ *   https://qr.vipps.no/28/2/01/031/4712345678?v=1
+ *   (developer.vippsmobilepay.com/docs/APIs/epayment-api/api-guide/features/personal-qr/)
+ * Uten 47 åpnet Vipps seg, men ble stående og laste. Beløp og melding står ikke i formatet og ble ikke
+ * fylt ut i testen, så de er ikke med. Kunden skriver beløpet selv.
  */
-function vippsLenke_(nr, ore, melding) {
-  var l = 'https://qr.vipps.no/28/2/01/031/' + String(nr).replace(/\D/g, '') + '?v=1';
-  if (cfg_('VIPPS_LENKE_UTFYLT', 'ja') !== 'nei') {
-    if (ore) l += '&a=' + Math.round(ore);
-    if (melding) l += '&m=' + encodeURIComponent(String(melding).slice(0, 50));
-  }
-  return l;
+function vippsLenke_(nr) {
+  var d = String(nr || '').replace(/\D/g, '');
+  if (d.length === 10 && d.slice(0, 2) === '47') d = d.slice(2);
+  return 'https://qr.vipps.no/28/2/01/031/47' + d + '?v=1';
 }
 
 /**
@@ -426,8 +426,8 @@ function pollPending() {
 /* ------------------------------------------------------------------ */
 
 var PRIVAT_TIMER = 48; // så lenge en ubetalt ordre kan kobles automatisk
-// Hvor ofte utløseren spør banken. Google gir 90 minutter utløsertid per døgn, delt med juletreff-skriptet
-// på samme konto, så hvert minutt bare de første timene etter en ordre, deretter hvert 5. minutt.
+// Hvor ofte utløseren spør banken. Google gir 90 minutter utløsertid per døgn for alle skriptene på
+// Google-kontoen, så hvert minutt bare de første timene etter en ordre, deretter hvert 5. minutt.
 var BANK_STRAKS_TIMER = 2;
 var BANK_OFTE_MIN = 5;
 // E-posten med betalingsinfo sendes først når betalingen ikke har kommet etter så mange minutter.
@@ -499,11 +499,11 @@ function statusPrivat_(o, sjekkBanken) {
 
 /** Det takkesiden trenger for å vise betalingsboksen. Sendes både fra kjøpet og fra statuskallet. */
 function venterSvar_(d) {
-  var nr = privatNr_(), ore = Math.round(Number(d.belop) * 100);
+  var nr = privatNr_();
   return {
     ok: true, status: 'VENTER_BANK', betaling: 'privat', ordre: d.ordre, belop: Number(d.belop),
     nr: nr, mottaker: formatPhone_(nr), navn: d.vipps_navn || d.navn, epost: maskEmail_(d.epost),
-    lenke: vippsLenke_(nr, ore, vippsMelding_(d.ordre)), melding: vippsMelding_(d.ordre),
+    lenke: vippsLenke_(nr), melding: vippsMelding_(d.ordre),
     automatisk: bankKlar_()
   };
 }
@@ -1312,7 +1312,7 @@ function sendBetalingMail_(o, nr, takkUrl, test) {
   if (!o.epost) return;
   var fornavn = String(o.navn || '').split(' ')[0] || 'du';
   var kr = Number(o.belop);
-  var lenke = vippsLenke_(nr, Math.round(kr * 100), vippsMelding_(o.ordre));
+  var lenke = vippsLenke_(nr);
   var serif = "font-family:'Playfair Display',Georgia,'Times New Roman',serif";
   var sans = "font-family:'Source Sans 3','Segoe UI',Arial,sans-serif";
   // Lite luft og ingen linjeskift, slik at hver opplysning holder seg på én linje på mobil. Bare navnet får bryte hvis det er langt.
@@ -1563,7 +1563,7 @@ function innstillinger_() {
   var nr = privatNr_();
   return {
     betaling: betalingsmate_(), bedriftKlar: harVippsNokler_(), vippsEnv: cfg_('VIPPS_ENV', 'test'),
-    nr: nr ? formatPhone_(nr) : '', utfylt: cfg_('VIPPS_LENKE_UTFYLT', 'ja') !== 'nei',
+    nr: nr ? formatPhone_(nr) : '',
     gebyrProsent: String(GEBYR_PROSENT), gebyrKr: String(GEBYR_KR),
     varselEpost: varselEpost_(), testlenke: testlenkeInfo_(), epostIgjen: epostIgjen_(),
     bank: {
@@ -1586,7 +1586,7 @@ function adminInnstillinger_(p) {
     if (betaling === 'privat' && !nr) return { ok: false, error: 'Legg inn mobilnummeret kundene skal vippse til før du bytter til Vipps privat.' };
     if (betaling === 'bedrift' && !harVippsNokler_()) return { ok: false, error: 'Vipps bedrift mangler nøkler i Skriptegenskaper (VIPPS_CLIENT_ID, VIPPS_CLIENT_SECRET, VIPPS_SUBSCRIPTION_KEY, VIPPS_MSN).' };
     // Gebyret for Vipps bedrift settes ikke her: satsen fra avtalen står fast i GEBYR_PROSENT og GEBYR_KR i koden.
-    props.setProperties({ BETALING: betaling, VIPPS_PRIVAT_NR: nr, VIPPS_LENKE_UTFYLT: p.utfylt === false || p.utfylt === 'nei' ? 'nei' : 'ja' });
+    props.setProperties({ BETALING: betaling, VIPPS_PRIVAT_NR: nr });
     if (betaling === 'privat') sikreBankUtloser_();
   }
   return { ok: true, innstillinger: innstillinger_() };

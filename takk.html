@@ -32,7 +32,8 @@
 .knapp-liten{font:inherit;font-weight:700;font-size:15px;border:1.5px solid var(--green);color:var(--green);background:#fff;border-radius:999px;padding:7px 16px;cursor:pointer;min-height:40px}
 .knapp-liten.ok{background:var(--green);color:var(--cream)}
 .btn.vipps{background:var(--vipps);width:100%;margin-top:10px;box-shadow:0 6px 18px rgba(255,91,36,.3)}
-.reserve{display:inline-block;margin-top:10px;font-size:14.5px}
+/* «Åpnet ikke Vipps?» på én linje og lenken på linjen under, så streken bare står under lenken */
+.reserve-rad{margin:10px 0 0;font-size:14.5px;line-height:1.6;color:var(--muted)}
 /* PC: nummer og beløp under QR-koden, som to rader */
 .fakta{margin:8px 0 0}
 .fakta>div{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;min-height:54px;padding:6px 0;border-top:1px solid var(--line)}
@@ -48,11 +49,9 @@
 .fra button{background:none;border:0;color:var(--red);text-decoration:underline;cursor:pointer;font:inherit;padding:2px}
 .nytt-navn{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
 .nytt-navn .btn{margin-top:0;min-height:46px;font-size:16px;padding:10px 18px}
-.venter{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:18px;color:var(--muted);font-size:15px}
 .prikk{width:10px;height:10px;border-radius:50%;background:var(--vipps);animation:puls 1.4s ease-in-out infinite}
 @keyframes puls{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
 .liten-feil{color:var(--red-dark);font-size:14px;text-align:center;margin-top:8px}
-.venter-hint{margin:4px 0 0!important;text-align:center;color:var(--muted);font-size:14.5px}
 .sjekker{text-align:center}
 .sjekker-ikon{width:64px;height:64px;margin:14px auto 6px;border-radius:50%;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
 .sjekker-ikon .prikk{width:18px;height:18px}
@@ -108,7 +107,7 @@
       trinn='<ol class="trinn">'+
         '<li><span class="nr">1</span><div><b>Kopier mobilnummeret</b><div class="kopier"><span class="tlf">'+esc(d.mottaker)+'</span><button class="knapp-liten" type="button" id="kopier">Kopier</button></div></div></li>'+
         '<li><span class="nr">2</span><div><b>Åpne Vipps</b><a class="btn vipps" id="aapne" href="'+esc(l[v.hoved])+'">Åpne Vipps</a>'+
-          '<a class="reserve" href="'+esc(l[v.reserve])+'">Åpnet ikke Vipps? Prøv denne lenken</a>'+
+          '<p class="reserve-rad">Åpnet ikke Vipps?<br><a class="reserve" href="'+esc(l[v.reserve])+'">Prøv denne lenken</a></p>'+
           '<small>Virker ingen av dem, åpner du Vipps-appen selv og limer inn nummeret.</small></div></li>'+
         '<li><span class="nr">3</span><div><b>Skriv inn '+esc(kr)+' og betal</b><small>Nummeret er fylt ut, men beløpet skriver du selv. Mangler nummeret, limer du det inn fra steg 1.</small></div></li>'+
         '<li><span class="nr">4</span><div><b>Kom tilbake hit</b><small>'+naar+'</small></div></li>'+
@@ -139,8 +138,7 @@
         '<button type="button" id="endre">Betaler du fra en annens Vipps?</button></p>'+
       '<form class="nytt-navn" id="nyttNavn" hidden><input id="navnFelt" autocomplete="off" placeholder="Fullt navn på Vipps-kontoen" maxlength="80" required>'+
         '<button class="btn" type="submit">Lagre</button></form><p class="liten-feil" id="navnFeil" hidden></p>'+
-      '<div id="statusDel"><div class="venter" role="status"><span class="prikk" aria-hidden="true"></span><span id="venterTekst">Venter på betalingen …</span></div>'+
-        '<p class="venter-hint">Har du betalt, trenger du ikke gjøre noe mer.</p></div>'+
+
       '<p class="liten-feil" id="sjekkFeil" hidden></p>');
     privat=d; // først når boksen faktisk er tegnet
     document.getElementById('visBetaling').onclick=function(){
@@ -171,9 +169,9 @@
     visModus(); window.scrollTo(0,0); planlegg(300);
   }
   function visModus(){
-    var b=document.getElementById('betalDel'), v=document.getElementById('venteDel'), st=document.getElementById('statusDel');
+    var b=document.getElementById('betalDel'), v=document.getElementById('venteDel');
     if(!b||!v) return;
-    b.hidden=!!venterFra; v.hidden=!venterFra; if(st) st.hidden=!!venterFra;
+    b.hidden=!!venterFra; v.hidden=!venterFra;
     var ft=document.getElementById('fraTekst'), en=document.getElementById('endre');
     if(ft) ft.hidden=!!venterFra; if(en) en.textContent=venterFra?'Betalte du fra en annens Vipps? Skriv navnet på kontoen':'Betaler du fra en annens Vipps?';
     var h=document.getElementById('venteHjelp'); if(h) h.hidden=!(venterFra && Date.now()-venterFra>20*60000);
@@ -222,7 +220,7 @@
   // Kunden kommer tilbake fra Vipps-appen: sjekk med en gang i stedet for å vente på neste runde.
   document.addEventListener('visibilitychange',function(){
     if(document.visibilityState==='visible' && privat && forlot){ forlot=false; visVenting(); return; }
-    if(document.visibilityState==='visible' && privat){ var t=document.getElementById('venterTekst'); if(t) t.textContent='Ser om betalingen har kommet …'; planlegg(300); setTimeout(function(){ if(t) t.textContent='Venter på betalingen …'; },4000); }
+    if(document.visibilityState==='visible' && privat){ planlegg(300); }
   });
   // Kommer kunden rett fra kjøpet, har forsiden lagt igjen betalingsinfoen. Da vises «Åpne Vipps» med en gang.
   var lagret=null;

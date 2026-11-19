@@ -1,6 +1,7 @@
-// Vipps privat: lenker som åpner Vipps med mottaker, beløp og melding ferdig utfylt.
-// Formatet er det samme som Vipps bruker i QR-kodene for privatpersoner. Det er ikke offisielt
-// dokumentert, så takkesiden har alltid en reservelenke og kopier-knapp. Test variantene på vipps-test.html.
+// Vipps privat: lenker som åpner Vipps med mottakeren ferdig utfylt.
+// Lenken lages i backend (vippsLenke_) i formatet Vipps dokumenterer for personlige QR-koder. At den åpner
+// appen fra en nettside, er ikke dokumentert, så takkesiden har alltid en reservelenke og kopier-knapp.
+// Test variantene på vipps-test.html.
 (function () {
   function miljo() {
     var ua = navigator.userAgent || '';
@@ -14,9 +15,9 @@
       tekst: (ios ? 'iPhone/iPad' : android ? 'Android' : 'PC/Mac') + ', ' + (app ? 'inne i ' + app.app : navn) };
   }
 
-  /** Lenken backend lager. nr: 8 sifre, ore: beløpet i øre. */
+  /** Lenken backend lager (nr: 8 sifre, med 47 foran i lenken). Testsiden kan legge til beløp (i øre) og melding. */
   function https(nr, ore, melding) {
-    var l = 'https://qr.vipps.no/28/2/01/031/' + String(nr).replace(/\D/g, '') + '?v=1';
+    var l = 'https://qr.vipps.no/28/2/01/031/47' + String(nr).replace(/\D/g, '').slice(-8) + '?v=1';
     if (ore) l += '&a=' + Math.round(ore);
     if (melding) l += '&m=' + encodeURIComponent(String(melding).slice(0, 50));
     return l;
