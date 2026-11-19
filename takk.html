@@ -49,15 +49,28 @@
 .fra button{background:none;border:0;color:var(--red);text-decoration:underline;cursor:pointer;font:inherit;padding:2px}
 .nytt-navn{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
 .nytt-navn .btn{margin-top:0;min-height:46px;font-size:16px;padding:10px 18px}
-.prikk{width:10px;height:10px;border-radius:50%;background:var(--vipps);animation:puls 1.4s ease-in-out infinite}
-@keyframes puls{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
 .liten-feil{color:var(--red-dark);font-size:14px;text-align:center;margin-top:8px}
+/* «Vi ser etter betalingen din»: radar, kort med det vi ser etter, og «Vis betalingen» nederst */
 .sjekker{text-align:center}
-.sjekker-ikon{width:64px;height:64px;margin:14px auto 6px;border-radius:50%;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
-.sjekker-ikon .prikk{width:18px;height:18px}
-.sjekker .ingress{margin-bottom:6px}
+.sjekker h1{text-wrap:balance}
+.sjekker .ingress{margin-bottom:16px}
+.radar{position:relative;width:76px;height:76px;margin:14px auto 8px}
+.radar::before,.radar::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid rgba(255,91,36,.6);opacity:0;animation:radar 2.4s cubic-bezier(.2,.6,.35,1) infinite}
+.radar::after{animation-delay:1.2s}
+.radar span{position:absolute;inset:25px;border-radius:50%;background:var(--vipps);box-shadow:0 0 0 6px rgba(255,91,36,.15),0 6px 18px rgba(255,91,36,.3)}
+@keyframes radar{0%{transform:scale(.35);opacity:.9}80%,100%{transform:scale(1);opacity:0}}
+@media (prefers-reduced-motion:reduce){.radar::before{animation:none;opacity:.35;transform:scale(.8)}.radar::after{display:none}}
+.vente-kort{background:#fff;border:1px solid var(--line);border-radius:14px;padding:2px 16px;margin:0;text-align:left}
+.vente-kort dd{flex:1 1 0%;min-width:0;justify-content:flex-end;text-align:right;font-size:20px}
+.vente-kort #venteNavn{overflow-wrap:anywhere}
+.vente-kort .knapp-liten{font-family:"Source Sans 3",system-ui,sans-serif;font-size:14px;min-height:36px;padding:5px 14px}
+.vente-kort .knapp-liten[aria-expanded="true"]{background:var(--cream)}
+.vente-tekst{color:var(--muted);font-size:14.5px;line-height:1.5;margin-top:14px;text-align:center;text-wrap:pretty}
+.nowrap{white-space:nowrap}
 .vente-hjelp{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:14px;font-size:15px;text-align:left}
-.lenkeknapp{background:none;border:0;color:var(--red);text-decoration:underline;cursor:pointer;font:inherit;font-size:15px;padding:6px;margin-top:12px}
+/* Spørsmålet på én linje og lenken på linjen under, som «Åpnet ikke Vipps?» */
+.tilbake-rad{margin-top:16px!important;text-align:center;color:var(--muted);font-size:15px;line-height:1.6}
+.lenkeknapp{background:none;border:0;color:var(--red);text-decoration:underline;cursor:pointer;font:inherit;padding:0}
 </style>
 </head>
 <body>
@@ -123,21 +136,25 @@
           (svg?'':'<small>'+naar+'</small>')+'</div></li>'+
       '</ol>';
     }
-    var kommer=d.automatisk?'Heftet dukker opp her og kommer på e-post så snart betalingen er registrert, vanligvis i løpet av få minutter.':'Heftet kommer på e-post så snart betalingen er registrert.';
+    var ePost='<span class="nowrap">e-post</span>';
+    var kommer=d.automatisk?'Heftet dukker opp her og kommer på '+ePost+' så snart betalingen er registrert, som regel etter kort tid.':'Heftet kommer på '+ePost+' så snart betalingen er registrert.';
     boks.className='box betal';
     vis('<div id="betalDel"><span class="eyebrow">Ordre '+esc(d.ordre)+'</span><h1>Betal '+esc(kr)+' med Vipps</h1>'+
       '<p class="ingress">Heftet kommer her og på e-post så snart betalingen er registrert.</p>'+trinn+'</div>'+
       '<div id="venteDel" class="sjekker" hidden><span class="eyebrow">Ordre '+esc(d.ordre)+'</span>'+
-        '<div class="sjekker-ikon" aria-hidden="true"><span class="prikk"></span></div>'+
-        '<h1>Vi ser etter betalingen din</h1>'+
-        '<p class="ingress">Har du betalt '+esc(kr)+', er du ferdig og trenger ikke betale igjen. '+kommer+'</p>'+
-        '<div class="vente-hjelp" id="venteHjelp" hidden>Har det gått lang tid? Sjekk i Vipps at betalingen gikk til <b>'+esc(d.mottaker)+'</b> og var på <b>'+esc(kr)+'</b>. '+
-          'Ser alt riktig ut, skriv til <a href="mailto:'+VJ_KONTAKT+'">'+VJ_KONTAKT+'</a> med ordrenummer '+esc(d.ordre)+', så ordner vi det. Ikke betal på nytt.</div>'+
-        '<button class="lenkeknapp" type="button" id="visBetaling">Har du ikke betalt ennå? Vis betalingen</button></div>'+
+        '<div class="radar" aria-hidden="true"><span></span></div>'+
+        '<h1 role="status">Vi ser etter betalingen din</h1>'+
+        '<p class="ingress">Har du betalt, er du ferdig og trenger ikke betale igjen.</p>'+
+        '<dl class="fakta vente-kort"><div><dt>Beløp</dt><dd>'+esc(kr)+'</dd></div><div><dt>Til</dt><dd>'+esc(d.mottaker)+'</dd></div>'+
+          '<div><dt>Fra</dt><dd><span id="venteNavn">'+esc(d.navn)+'</span><button type="button" class="knapp-liten" id="venteEndre" aria-expanded="false">Endre</button></dd></div></dl></div>'+
       '<p class="fra" id="fra"><span id="fraTekst">Betal fra Vipps-kontoen til <b id="fraNavn">'+esc(d.navn)+'</b>, så finner vi betalingen din. </span>'+
         '<button type="button" id="endre">Betaler du fra en annens Vipps?</button></p>'+
       '<form class="nytt-navn" id="nyttNavn" hidden><input id="navnFelt" autocomplete="off" placeholder="Fullt navn på Vipps-kontoen" maxlength="80" required>'+
         '<button class="btn" type="submit">Lagre</button></form><p class="liten-feil" id="navnFeil" hidden></p>'+
+      '<div id="venteBunn" hidden><p class="vente-tekst">'+kommer+'</p>'+
+        '<div class="vente-hjelp" id="venteHjelp" hidden>Har det gått mer enn 20 minutter? Sjekk i Vipps at du betalte <b>'+esc(kr)+'</b> til <b>'+esc(d.mottaker)+'</b>. '+
+          'Betalte du fra en annens Vipps, trykker du «Endre» og skriver navnet. Ser alt riktig ut, skriver du til <a href="mailto:'+VJ_KONTAKT+'">'+VJ_KONTAKT+'</a> med ordrenummer '+esc(d.ordre)+', så ordner vi det. Ikke betal på nytt.</div>'+
+        '<p class="tilbake-rad">Har du ikke betalt ennå?<br><button class="lenkeknapp" type="button" id="visBetaling">Vis betalingen</button></p></div>'+
 
       '<p class="liten-feil" id="sjekkFeil" hidden></p>');
     privat=d; // først når boksen faktisk er tegnet
@@ -153,13 +170,20 @@
       vjVipps.kopier(nr).then(function(){ kb.textContent='Kopiert!'; kb.classList.add('ok'); setTimeout(function(){ kb.textContent='Kopier'; kb.classList.remove('ok'); },2500); })
         .catch(function(){ kb.textContent='Hold inne nummeret for å kopiere'; });
     };
-    document.getElementById('endre').onclick=function(){ var f=document.getElementById('nyttNavn'); f.hidden=!f.hidden; if(!f.hidden) document.getElementById('navnFelt').focus(); };
+    var veksleNavn=function(){
+      var f=document.getElementById('nyttNavn'); f.hidden=!f.hidden;
+      document.getElementById('venteEndre').setAttribute('aria-expanded',String(!f.hidden));
+      if(!f.hidden) document.getElementById('navnFelt').focus();
+    };
+    document.getElementById('endre').onclick=veksleNavn;
+    document.getElementById('venteEndre').onclick=veksleNavn;
     document.getElementById('nyttNavn').onsubmit=function(e){
       e.preventDefault();
       var felt=document.getElementById('navnFelt'), feil=document.getElementById('navnFeil');
       vjPost({action:'navn',ordre:ordre,k:k,navn:felt.value}).then(function(r){
         if(!r.ok){ feil.textContent=r.error||'Noe gikk galt'; feil.hidden=false; return; }
-        feil.hidden=true; document.getElementById('fraNavn').textContent=r.navn; document.getElementById('nyttNavn').hidden=true;
+        feil.hidden=true; document.getElementById('fraNavn').textContent=r.navn; document.getElementById('venteNavn').textContent=r.navn;
+        document.getElementById('nyttNavn').hidden=true; document.getElementById('venteEndre').setAttribute('aria-expanded','false');
       }).catch(function(){ feil.textContent='Fikk ikke lagret navnet. Prøv igjen.'; feil.hidden=false; });
     };
   }
@@ -172,8 +196,9 @@
     var b=document.getElementById('betalDel'), v=document.getElementById('venteDel');
     if(!b||!v) return;
     b.hidden=!!venterFra; v.hidden=!venterFra;
-    var ft=document.getElementById('fraTekst'), en=document.getElementById('endre');
-    if(ft) ft.hidden=!!venterFra; if(en) en.textContent=venterFra?'Betalte du fra en annens Vipps? Skriv navnet på kontoen':'Betaler du fra en annens Vipps?';
+    // Navnet står i kortet på venteskjermen, så linjen under stegene trengs bare der
+    var fra=document.getElementById('fra'), bunn=document.getElementById('venteBunn');
+    if(fra) fra.hidden=!!venterFra; if(bunn) bunn.hidden=!venterFra;
     var h=document.getElementById('venteHjelp'); if(h) h.hidden=!(venterFra && Date.now()-venterFra>20*60000);
   }
 
