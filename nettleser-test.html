@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="format-detection" content="telephone=no">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/side.css">
+<script src="assets/config.js"></script><script src="assets/api.js"></script>
+<script src="assets/vipps.js"></script>
+<title>Test av Åpne i nettleseren</title>
+<style>
+main{max-width:720px}
+h1{font-size:30px;margin-bottom:6px}
+.intro{color:var(--muted);margin-bottom:16px}
+.kort{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+.miljo{background:#eef3ee;border-color:#cfe0d1}
+.miljo label{font-weight:700;font-size:15px;display:block}
+.miljo select,.miljo input{display:block;width:100%;max-width:none;font:inherit;font-size:18px;font-weight:700;margin-top:6px;padding:10px 12px;border:1.5px solid var(--green);border-radius:10px;background:#fff;color:var(--ink);min-height:48px}
+.miljo .hint{font-size:14px;color:var(--muted);margin-top:8px}
+.miljo code{display:block;font-size:11.5px;color:var(--muted);margin-top:6px;word-break:break-all}
+.landet{border-width:2px;font-size:17px}
+.landet.ja{background:#e3efe6;border-color:var(--green);color:var(--green)}
+.landet.nei{background:#fbeaea;border-color:var(--red);color:var(--red-dark)}
+.landet b{display:block;font-size:22px;margin-bottom:4px}
+.variant h2{font-size:18px;font-family:inherit;font-weight:700;color:var(--ink);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.variant p{color:var(--muted);font-size:14.5px;margin:4px 0 8px}
+.variant code{display:block;font-size:12px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 8px;word-break:break-all;color:var(--ink)}
+.proev{display:inline-flex;align-items:center;justify-content:center;background:var(--green);color:var(--cream);font:inherit;font-weight:700;text-decoration:none;border:0;border-radius:10px;padding:10px 18px;margin-top:10px;min-height:46px;cursor:pointer}
+.resultat{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.resultat button{font:inherit;font-size:14px;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;cursor:pointer;min-height:38px}
+.resultat button[aria-pressed=true]{border-color:var(--green);background:var(--green);color:var(--cream)}
+.merke{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:999px;background:#fbeaea;color:var(--red-dark)}
+.send{position:sticky;bottom:0;z-index:2;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px;box-shadow:0 -6px 18px rgba(42,29,23,.08)}
+.send .rad{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.send .btn{margin-top:0}
+#sendStatus{font-size:15px;color:var(--muted)}
+#sendStatus.ok{color:var(--green);font-weight:700}
+#sendStatus.feil{color:var(--red-dark)}
+textarea{width:100%;min-height:150px;font:13px/1.4 ui-monospace,monospace;border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px}
+ol.miljoer{padding-left:30px;color:var(--ink)}
+ol.miljoer li{margin:6px 0}
+ol.miljoer small{display:block;color:var(--muted);font-size:14px;line-height:1.4}
+.status-sted{display:inline-block;font-size:12.5px;font-weight:700;border-radius:999px;padding:1px 8px;margin-left:6px;background:#efe9dd;color:var(--muted);vertical-align:1px}
+.status-sted.ja{background:#e3efe6;color:var(--green)}
+.status-sted.her{background:#fbeaea;color:var(--red-dark)}
+.fremdrift{font-weight:700;color:var(--green)}
+details summary{cursor:pointer;font-weight:700}
+.btn{min-height:46px;font-size:16px;padding:10px 18px}
+</style>
+</head>
+<body>
+<div class="band" aria-hidden="true"></div>
+<main>
+  <div class="kort landet" id="landet" role="status" hidden></div>
+
+  <div id="test">
+  <h1>Test av «Åpne i nettleseren»</h1>
+  <p class="intro">Inne i Instagram, Facebook, TikTok og andre apper kan ikke kunden laste ned heftet. Her tester du hvilke måter som får siden over i Safari eller Chrome, og om PDF-er virker i appen. Trykk «Prøv» på hver variant. Kommer du over i nettleseren, står det «Det virket» øverst. Gå så tilbake til appen og merk hva som skjedde. Trykk «Send inn» når du er ferdig. Gjør det samme fra hver app i listen nederst.</p>
+
+  <div class="kort miljo">
+    <label for="sted">Hvor tester du fra?</label>
+    <select id="sted"></select>
+    <label for="app" id="appLabel" hidden style="margin-top:12px">Hvilken app?<input id="app" maxlength="40" placeholder="For eksempel Pinterest"></label>
+    <p class="hint" id="oppdaget"></p>
+    <p class="hint fremdrift" id="fremdriftTopp" hidden></p>
+    <code id="ua"></code>
+  </div>
+
+  <div id="varianter"></div>
+
+  <div class="send">
+    <div class="rad">
+      <button class="btn" type="button" id="sendInn">Send inn</button>
+      <span id="sendStatus" role="status">Ikke sendt ennå.</span>
+    </div>
+  </div>
+
+  <div class="kort">
+    <h2 style="font-size:20px">Apper å teste fra</h2>
+    <p class="intro" style="margin:4px 0 8px">Åpne lenken til denne siden inne i hver app. Velg appen øverst hver gang, og send inn for hver app for seg. Listen viser hva som er sendt inn fra alle telefoner.</p>
+    <button class="proev" type="button" id="kopierSide" style="margin:0 0 10px">Kopier lenken til denne siden</button>
+    <p class="fremdrift" id="fremdrift" style="margin-bottom:6px"></p>
+    <ol class="miljoer" id="stedListe"></ol>
+  </div>
+
+  <div class="kort">
+    <details>
+      <summary>Hvis «Send inn» ikke virker</summary>
+      <p class="intro" style="margin:8px 0 0">Kopier resultatene og lim dem inn i chatten med Claude.</p>
+      <button class="btn" type="button" id="kopier" style="margin-top:10px">Kopier resultatene</button>
+      <textarea id="sammendrag" readonly></textarea>
+    </details>
+  </div>
+  </div>
+</main>
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function les(k,f){ try{ var v=localStorage.getItem(k); return v==null?f:v; }catch(e){ return f; } }
+  function skriv(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+  var m=vjVipps.miljo(), iApp=window.vjInApp?vjInApp():null;
+  var DELE='Send lenken i en melding til en venn, og trykk på lenken i din egen melding.';
+  var STEDER=[
+    ['iphone-instagram','iPhone, Instagram',DELE],
+    ['iphone-facebook','iPhone, Facebook','Del lenken i et innlegg der bare du kan se det («Bare meg»), og trykk på den i Facebook-appen.'],
+    ['iphone-messenger','iPhone, Messenger','Send lenken til deg selv i Messenger, og trykk på den.'],
+    ['iphone-tiktok','iPhone, TikTok',DELE],
+    ['iphone-snapchat','iPhone, Snapchat',DELE],
+    ['iphone-threads','iPhone, Threads',DELE],
+    ['iphone-linkedin','iPhone, LinkedIn',DELE],
+    ['iphone-gmail','iPhone, Gmail','Send lenken til deg selv på e-post, og trykk på den i Gmail-appen.'],
+    ['iphone-annen','iPhone, annen app','For eksempel Pinterest, Outlook eller Discord. Skriv navnet på appen øverst.'],
+    ['android-instagram','Android, Instagram',DELE],
+    ['android-facebook','Android, Facebook','Som på iPhone, men i Facebook på Android.'],
+    ['android-messenger','Android, Messenger','Send lenken til deg selv i Messenger, og trykk på den.'],
+    ['android-tiktok','Android, TikTok',DELE],
+    ['android-snapchat','Android, Snapchat',DELE],
+    ['android-threads','Android, Threads',DELE],
+    ['android-linkedin','Android, LinkedIn',DELE],
+    ['android-gmail','Android, Gmail','Send lenken til deg selv på e-post, og trykk på den i Gmail-appen.'],
+    ['android-annen','Android, annen app','Skriv navnet på appen øverst.']
+  ];
+  // p: hvor varianten gir mening. type: lenke (åpnes med «Prøv»), meny, kopier eller pdf.
+  var VAR=[
+    {id:'x-safari',navn:'Åpne i Safari (x-safari)',p:'iphone',type:'lenke',hva:'Det nedlastingssiden bruker på iPhone i dag. Virker fra iOS 17.',bruker:true},
+    {id:'chrome-ios',navn:'Åpne i Chrome (googlechromes)',p:'iphone',type:'lenke',hva:'Bare hvis du har Chrome på telefonen.'},
+    {id:'intent-chrome',navn:'Åpne i Chrome (Android-intent)',p:'android',type:'lenke',hva:'Det nedlastingssiden bruker på Android i dag.',bruker:true},
+    {id:'intent-valg',navn:'Åpne i standardnettleseren (Android-intent)',p:'android',type:'lenke',hva:'Skal åpne nettleseren du bruker til vanlig, for eksempel Samsung Internet.'},
+    {id:'chrome-android',navn:'Åpne i Chrome (googlechrome)',p:'android',type:'lenke',hva:'Chromes egen lenke.'},
+    {id:'ny-fane',navn:'Vanlig lenke til ny fane',p:'alle',type:'lenke',hva:'Noen apper sender slike lenker over til nettleseren.'},
+    {id:'meny',navn:'Menyen i appen',p:'alle',type:'meny',hva:'Trykk «Gjør klar», og så ••• eller del-knappen i appen. Velg «Åpne i nettleser», «Åpne i Safari» eller lignende. Står det «Det virket» øverst? Merk ✗ hvis menyen ikke har noe slikt valg.'},
+    {id:'kopier',navn:'Kopier lenken og lim inn i nettleseren',p:'alle',type:'kopier',hva:'Trykk «Kopier», åpne Safari eller Chrome selv og lim inn lenken. Merk ✓ hvis det står «Det virket» der.'},
+    {id:'pdf-last',navn:'Last ned PDF her',p:'alle',type:'pdf',hva:'Lagres en test-PDF eller vises den? Det er slik nedlastingen virker i en vanlig nettleser.'},
+    {id:'pdf-vis',navn:'Vis PDF her',p:'alle',type:'pdf',hva:'Vises test-PDF-en? Trykk tilbake etterpå. Det er slik nedlastingssiden prøver inne i apper i dag.',bruker:true}
+  ];
+  var SVAR=[['ok','✓ Virket'],['delvis','◐ Delvis'],['nei','✗ Virket ikke']];
+  function navnPa(id){ var v=VAR.filter(function(x){return x.id===id;})[0]; return v?v.navn:id; }
+
+  var q=new URLSearchParams(location.search);
+  // Kommer siden fra en av variantene? Vis om den havnet i nettleseren, og fjern merket fra adressen.
+  var landet=q.get('landet'), reserve=q.get('reserve')==='1';
+  if(landet!==null){
+    q.delete('landet'); q.delete('reserve');
+    try{ history.replaceState(null,'',location.pathname+(q.toString()?'?'+q.toString():'')); }catch(e){}
+  }
+  // Menytesten merker adressen på forhånd. Lastes siden bare på nytt inne i appen, er det ikke noe resultat.
+  if(landet==='meny' && iApp && !reserve) landet='';
+  if(landet){
+    var fraSted=(STEDER.filter(function(s){return s[0]===q.get('sted');})[0]||[])[1]||'appen';
+    var appNavn=fraSted.split(', ')[1]||'appen', lb=$('landet');
+    lb.hidden=false;
+    if(!iApp && !reserve){
+      lb.className='kort landet ja';
+      lb.innerHTML='<b>✓ Det virket</b>«'+esc(navnPa(landet))+'» åpnet siden i '+esc(m.nettleser)+'. Gå tilbake til '+esc(appNavn)+' og trykk «✓ Virket» på denne varianten.';
+      $('test').hidden=true; // Selve testen gjøres inne i appen, ikke her.
+    } else {
+      lb.className='kort landet nei';
+      lb.innerHTML='<b>◐ Fortsatt inne i '+esc(iApp?iApp.app:appNavn)+'</b>«'+esc(navnPa(landet))+'» åpnet siden på nytt inne i appen, ikke i nettleseren. Merk «◐ Delvis» på denne varianten.';
+    }
+  }
+
+  // Gjett appen ut fra nettleseren. Gmail kan ikke kjennes igjen, så det må velges for hånd.
+  function gjett(){
+    var f=m.ios?'iphone':'android', a=(iApp&&iApp.app||'').toLowerCase();
+    if(STEDER.some(function(s){return s[0]===f+'-'+a;})) return f+'-'+a;
+    return f+'-'+(iApp?'annen':'instagram');
+  }
+  var husket=''; try{ husket=sessionStorage.getItem('vj_nettlesertest_sted')||''; }catch(e){}
+  var sted=q.get('sted')||husket||gjett();
+  if(!STEDER.some(function(s){return s[0]===sted;})) sted=gjett();
+  var res={}, liste=null;
+  function nokkel(){ return 'vj_nettlesertest_'+sted; }
+  function lastRes(){ try{ res=JSON.parse(les(nokkel(),'{}'))||{}; }catch(e){ res={}; } }
+  function stedNavn(){ return STEDER.filter(function(s){return s[0]===sted;})[0][1]; }
+  function plattform(){ return sted.split('-')[0]; }
+  function annen(){ return /-annen$/.test(sted); }
+  function svarTekst(v){ var s=SVAR.filter(function(x){return x[0]===res[v.id];})[0]; return s?s[1]:'ikke testet'; }
+
+  $('sted').innerHTML=STEDER.map(function(s){ return '<option value="'+s[0]+'">'+esc(s[1])+'</option>'; }).join('');
+  $('sted').value=sted;
+  $('app').value=les('vj_nettlesertest_app','');
+  $('ua').textContent=navigator.userAgent;
+  $('oppdaget').textContent=(iApp?'Siden tror du tester fra: '+m.tekst+'.':'Siden tror du er i en vanlig nettleser ('+m.tekst+'). Testen gir mest mening inne i en app.')+
+    ' Velg riktig app hvis det ikke stemmer. Gmail kan ikke oppdages, så det må du velge selv.';
+
+  // Adressen variantene åpner. Merket «landet» viser at siden kom fram, og «reserve» at den kom via reserveadressen inne i appen.
+  function mal(id,ekstra){ return location.origin+location.pathname+'?landet='+id+'&sted='+encodeURIComponent(sted)+(ekstra||''); }
+  function lenke(v){
+    var u=mal(v.id), uten=u.replace(/^https?:\/\//,''), reserveUrl=encodeURIComponent(mal(v.id,'&reserve=1'));
+    switch(v.id){
+      case 'x-safari': return 'x-safari-'+u;
+      case 'chrome-ios': return u.replace(/^https:/,'googlechromes:').replace(/^http:/,'googlechrome:');
+      case 'intent-chrome': return 'intent://'+uten+'#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url='+reserveUrl+';end';
+      case 'intent-valg': return 'intent://'+uten+'#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url='+reserveUrl+';end';
+      case 'chrome-android': return 'googlechrome://navigate?url='+encodeURIComponent(u);
+      default: return u;
+    }
+  }
+  function synlige(){ var p=plattform(); return VAR.filter(function(v){ return v.p==='alle'||v.p===p; }); }
+
+  // En liten, gyldig PDF lages i nettleseren, så testen ikke bruker opp noen nedlastinger.
+  function testPdf(){
+    var tekst='Test-PDF fra Vegansk juleribbe. Ser du dette, virker PDF her.';
+    var deler=['<</Type/Catalog/Pages 2 0 R>>','<</Type/Pages/Kids[3 0 R]/Count 1>>',
+      '<</Type/Page/Parent 2 0 R/MediaBox[0 0 420 200]/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R>>',
+      '<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>'];
+    var strom='BT /F1 14 Tf 24 100 Td ('+tekst.replace(/[^\x20-\x7e]/g,'')+') Tj ET';
+    deler.push('<</Length '+strom.length+'>>\nstream\n'+strom+'\nendstream');
+    var pdf='%PDF-1.4\n', pos=[];
+    deler.forEach(function(d,i){ pos.push(pdf.length); pdf+=(i+1)+' 0 obj\n'+d+'\nendobj\n'; });
+    var xref=pdf.length;
+    pdf+='xref\n0 '+(deler.length+1)+'\n0000000000 65535 f \n'+pos.map(function(p){ return ('000000000'+p).slice(-10)+' 00000 n \n'; }).join('');
+    pdf+='trailer\n<</Size '+(deler.length+1)+'/Root 1 0 R>>\nstartxref\n'+xref+'\n%%EOF';
+    return URL.createObjectURL(new Blob([pdf],{type:'application/pdf'}));
+  }
+
+  function tegn(){
+    $('appLabel').hidden=!annen();
+    $('varianter').innerHTML=synlige().map(function(v){
+      var l=lenke(v), knapp;
+      if(v.type==='lenke') knapp='<a class="proev" href="'+esc(l)+'"'+(v.id==='ny-fane'?' target="_blank" rel="noopener"':'')+'>Prøv</a>';
+      else if(v.type==='meny') knapp='<button class="proev" type="button" data-gjor="meny">Gjør klar</button>';
+      else if(v.type==='kopier') knapp='<button class="proev" type="button" data-gjor="kopier">Kopier lenken</button>';
+      else knapp='<button class="proev" type="button" data-gjor="'+v.id+'">Prøv</button>';
+      return '<div class="kort variant"><h2>'+esc(v.navn)+(v.bruker?'<span class="merke">Brukes i dag</span>':'')+'</h2><p>'+esc(v.hva)+'</p>'+
+        (v.type==='lenke'||v.type==='kopier'?'<code>'+esc(l)+'</code>':'')+knapp+'<p class="hint" data-svar="'+v.id+'"></p>'+
+        '<div class="resultat">'+SVAR.map(function(s){ return '<button type="button" data-v="'+v.id+'" data-s="'+s[0]+'" aria-pressed="'+(res[v.id]===s[0])+'">'+s[1]+'</button>'; }).join('')+'</div></div>';
+    }).join('');
+    oppsummer(); visStatus(); tegnListe();
+  }
+  function hint(id,tekst){ var h=document.querySelector('[data-svar="'+id+'"]'); if(h) h.textContent=tekst; }
+  function oppsummer(){
+    var linjer=['Nettlesertest: '+stedNavn()+(annen()&&$('app').value?' ('+$('app').value+')':'')+' (siden oppdaget: '+m.tekst+')'];
+    synlige().forEach(function(v){ linjer.push('- '+v.navn+': '+svarTekst(v)); });
+    linjer.push('Nettleser-ID: '+navigator.userAgent);
+    $('sammendrag').value=linjer.join('\n');
+  }
+
+  function tegnListe(){
+    var ferdig=0;
+    $('stedListe').innerHTML=STEDER.map(function(s){
+      var l=liste&&liste[s[0]], merke;
+      if(l){
+        ferdig++;
+        merke='<span class="status-sted ja">✓ Sendt '+esc(new Date(l.tid).toLocaleString('nb-NO',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))+
+          ' · '+l.ok+' ✓ '+l.delvis+' ◐ '+l.nei+' ✗</span>';
+      } else merke='<span class="status-sted">'+(liste?'Ikke testet':'…')+'</span>';
+      if(s[0]===sted) merke+='<span class="status-sted her">Valgt nå</span>';
+      return '<li><b>'+esc(s[1])+'</b>'+merke+'<small>'+esc(s[2])+'</small></li>';
+    }).join('');
+    var t=liste?ferdig+' av '+STEDER.length+' apper er sendt inn.':'';
+    $('fremdrift').textContent=t; $('fremdriftTopp').textContent=t?t+' Se listen nederst.':''; $('fremdriftTopp').hidden=!t;
+  }
+  function hentListe(){
+    if(!window.vjGet) return;
+    vjGet({action:'nettlesertestliste'}).then(function(d){ if(d&&d.ok){ liste=d.steder||{}; tegnListe(); } }).catch(function(){});
+  }
+
+  // Innsending. Husker hva som sist ble sendt fra hver app, så siden kan si om noe er endret siden.
+  function tilstand(){ return JSON.stringify(synlige().map(function(v){ return res[v.id]||''; }))+(annen()?$('app').value:''); }
+  function sistSendt(){ return les('vj_nettlesertest_sendt_'+sted,''); }
+  function visStatus(tekst,klasse){
+    var s=$('sendStatus');
+    if(tekst){ s.textContent=tekst; s.className=klasse||''; return; }
+    var sendt=sistSendt();
+    if(sendt && sendt===tilstand()){ s.textContent='Sendt fra '+stedNavn()+'. Velg neste app i listen.'; s.className='ok'; }
+    else if(sendt){ s.textContent='Endret siden du sendte. Trykk «Send inn» igjen.'; s.className=''; }
+    else { s.textContent='Ikke sendt ennå fra '+stedNavn()+'.'; s.className=''; }
+  }
+  var sender=false, autoTimer=null;
+  function send(){
+    if(sender) return;
+    if(!synlige().some(function(v){ return res[v.id]; })){ visStatus('Merk minst én variant først.','feil'); return; }
+    if(annen() && !$('app').value.trim()){ visStatus('Skriv navnet på appen øverst.','feil'); $('app').focus(); return; }
+    sender=true; $('sendInn').disabled=true; visStatus('Sender …');
+    var t=tilstand(), svar={};
+    synlige().forEach(function(v){ if(res[v.id]) svar[v.id]=res[v.id]; });
+    vjPost({action:'nettlesertest',stedId:sted,app:$('app').value,oppdaget:m.tekst,ua:navigator.userAgent,res:JSON.stringify(svar)})
+      .then(function(d){
+        if(!d||!d.ok) throw new Error(d&&d.error||'Ukjent feil');
+        skriv('vj_nettlesertest_sendt_'+sted,t);
+        hentListe();
+        if(d.sendt) visStatus(); else visStatus('Lagret i regnearket, men backend har ingen e-postadresse å sende til. Legg inn VARSEL_EPOST i Skriptegenskaper.','feil');
+      })
+      .catch(function(e){ visStatus('Fikk ikke sendt: '+e.message+' Bruk «Kopier resultatene» nederst.','feil'); })
+      .then(function(){ sender=false; $('sendInn').disabled=false; });
+  }
+  // Sender av seg selv når alle variantene er merket.
+  function autoSend(){
+    clearTimeout(autoTimer);
+    if(!synlige().every(function(v){ return res[v.id]; }) || sistSendt()===tilstand() || (annen()&&!$('app').value.trim())) return;
+    autoTimer=setTimeout(send,1500);
+  }
+
+  lastRes();
+  $('varianter').addEventListener('click',function(e){
+    var b=e.target.closest('button[data-v]');
+    if(b){ res[b.dataset.v]=b.dataset.s; skriv(nokkel(),JSON.stringify(res)); tegn(); autoSend(); return; }
+    var g=e.target.closest('button[data-gjor]'); if(!g) return;
+    var hva=g.dataset.gjor;
+    if(hva==='meny'){
+      // Menyen åpner adressen siden står på nå. Merk den, så nettleseren viser «Det virket».
+      try{ history.replaceState(null,'',mal('meny').replace(location.origin,'')); }catch(err){}
+      hint('meny','Klar. Trykk nå på ••• eller del-knappen i appen og velg å åpne i nettleseren.');
+    } else if(hva==='kopier'){
+      vjVipps.kopier(mal('kopier')).then(function(){ hint('kopier','Kopiert. Åpne Safari eller Chrome og lim inn lenken i adressefeltet.'); })
+        .catch(function(){ hint('kopier','Fikk ikke kopiert. Hold inne lenken over for å kopiere den.'); });
+    } else if(hva==='pdf-last'){
+      var a=document.createElement('a'); a.href=testPdf(); a.download='test-vegansk-juleribbe.pdf';
+      document.body.appendChild(a); a.click(); a.remove();
+      hint('pdf-last','Lastet ned eller vist? Sjekk Filer eller Nedlastinger, og merk under.');
+    } else if(hva==='pdf-vis'){
+      hint('pdf-vis','Åpner PDF-en. Trykk tilbake etterpå og merk under.');
+      setTimeout(function(){ location.href=testPdf(); },150);
+    }
+  });
+  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') hentListe(); });
+  $('sted').addEventListener('change',function(){ sted=$('sted').value; try{ sessionStorage.setItem('vj_nettlesertest_sted',sted); }catch(e){} lastRes(); tegn(); });
+  $('app').addEventListener('input',function(){ skriv('vj_nettlesertest_app',$('app').value); oppsummer(); visStatus(); });
+  $('sendInn').onclick=send;
+  $('kopierSide').onclick=function(){
+    var u=location.origin+location.pathname;
+    vjVipps.kopier(u).then(function(){ $('kopierSide').textContent='Kopiert! Send den til deg selv i appen du skal teste.'; })
+      .catch(function(){ $('kopierSide').textContent=u; });
+  };
+  $('kopier').onclick=function(){
+    vjVipps.kopier($('sammendrag').value).then(function(){ $('kopier').textContent='Kopiert!'; setTimeout(function(){ $('kopier').textContent='Kopier resultatene'; },2500); })
+      .catch(function(){ $('sammendrag').select(); });
+  };
+  tegn(); hentListe();
+})();
+</script>
+</body>
+</html>

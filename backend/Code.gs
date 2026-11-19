@@ -107,6 +107,7 @@ var ORDRE_ARK = 'Ordrer';
 var BESOK_ARK = 'Besøk';
 var BANK_ARK = 'Bank';
 var VTEST_ARK = 'Vippstest';
+var NTEST_ARK = 'Nettlesertest';
 // betaling: «bedrift» eller «privat». gebyr: Vipps-gebyret i kroner for salget (bare bedrift).
 // bank_id: transaksjonen i banken som betalte ordren. vipps_navn: navnet kunden betaler fra i Vipps.
 var ORDRE_KOLONNER = ['ordre', 'opprettet', 'status', 'navn', 'epost', 'telefon', 'token',
@@ -116,6 +117,7 @@ var BESOK_KOLONNER = ['tid', 'side', 'kilde', 'utm_source', 'utm_campaign', 'enh
 // Innbetalinger fra banken som har samme beløp som heftet. Andre innbetalinger lagres ikke.
 var BANK_KOLONNER = ['sett', 'bank_id', 'dato', 'belop', 'navn', 'tekst', 'type', 'bokforing', 'status', 'ordre'];
 var VTEST_KOLONNER = ['tid', 'sted', 'oppdaget', 'resultater', 'belop', 'melding', 'ua'];
+var NTEST_KOLONNER = ['tid', 'sted', 'app', 'oppdaget', 'resultater', 'ua'];
 var CTA_NAVN = ['hero', 'sticky', 'final'];
 
 /* ------------------------------------------------------------------ */
@@ -173,7 +175,7 @@ function gebyr_(kr) {
 }
 
 function sheet_(name) {
-  var kol = name === ORDRE_ARK ? ORDRE_KOLONNER : name === BESOK_ARK ? BESOK_KOLONNER : name === VTEST_ARK ? VTEST_KOLONNER : BANK_KOLONNER;
+  var kol = name === ORDRE_ARK ? ORDRE_KOLONNER : name === BESOK_ARK ? BESOK_KOLONNER : name === VTEST_ARK ? VTEST_KOLONNER : name === NTEST_ARK ? NTEST_KOLONNER : BANK_KOLONNER;
   var ss = SpreadsheetApp.openById(cfg_('SHEET_ID'));
   var sh = ss.getSheetByName(name);
   if (!sh) {
@@ -226,6 +228,8 @@ function route_(e, body) {
       case 'ignorer':    return json_(adminIgnorer_(p));
       case 'vippstest':  begrens_('vippstest', 10); return json_(vippsTest_(p));
       case 'vippstestliste': begrens_('vippstestliste', 60); return json_(vippsTestListe_());
+      case 'nettlesertest':  begrens_('nettlesertest', 10); return json_(nettleserTest_(p));
+      case 'nettlesertestliste': begrens_('nettlesertestliste', 60); return json_(nettleserTestListe_());
       default:         return json_({ ok: true, info: 'Vegansk juleribbe API' });
     }
   } catch (err) {
@@ -1807,6 +1811,69 @@ function vippsTestListe_() {
     try { res = JSON.parse(r[3] || '{}'); } catch (e) {}
     var telling = { ok: 0, delvis: 0, nei: 0 };
     Object.keys(res).forEach(function (id) { var s = String(res[id]).split(':')[0]; if (telling[s] != null) telling[s]++; });
+    steder[m[1]] = { tid: tid, ok: telling.ok, delvis: telling.delvis, nei: telling.nei };
+  });
+  return { ok: true, steder: steder };
+}
+
+// ---------- Test av «Åpne i nettleseren» fra apper (nettleser-test.html) ----------
+
+var NTEST_VARIANTER = {
+  'x-safari': 'Åpne i Safari (x-safari)', 'chrome-ios': 'Åpne i Chrome (googlechromes)',
+  'intent-chrome': 'Åpne i Chrome (Android-intent)', 'intent-valg': 'Åpne i standardnettleseren (Android-intent)',
+  'chrome-android': 'Åpne i Chrome (googlechrome)', 'ny-fane': 'Vanlig lenke til ny fane', 'meny': 'Menyen i appen',
+  'kopier': 'Kopier lenken og lim inn i nettleseren', 'pdf-last': 'Last ned PDF her', 'pdf-vis': 'Vis PDF her'
+};
+var NTEST_SVAR = { ok: '✓ Virket', delvis: '◐ Delvis', nei: '✗ Virket ikke' };
+var NTEST_STEDER = {
+  'iphone-instagram': 'iPhone, Instagram', 'iphone-facebook': 'iPhone, Facebook', 'iphone-messenger': 'iPhone, Messenger',
+  'iphone-tiktok': 'iPhone, TikTok', 'iphone-snapchat': 'iPhone, Snapchat', 'iphone-threads': 'iPhone, Threads',
+  'iphone-linkedin': 'iPhone, LinkedIn', 'iphone-gmail': 'iPhone, Gmail', 'iphone-annen': 'iPhone, annen app',
+  'android-instagram': 'Android, Instagram', 'android-facebook': 'Android, Facebook', 'android-messenger': 'Android, Messenger',
+  'android-tiktok': 'Android, TikTok', 'android-snapchat': 'Android, Snapchat', 'android-threads': 'Android, Threads',
+  'android-linkedin': 'Android, LinkedIn', 'android-gmail': 'Android, Gmail', 'android-annen': 'Android, annen app'
+};
+var NTEST_PER_DAG = 60;
+
+/** Lagrer resultatene fra én app i arket Nettlesertest og sender dem til deg på e-post. */
+function nettleserTest_(p) {
+  var rent = function (v, maks) { return String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, maks); };
+  var sted = NTEST_STEDER[p.stedId];
+  if (!sted) throw new Error('Velg hvor du tester fra.');
+  var res = {};
+  try { res = (typeof p.res === 'string' ? JSON.parse(p.res) : p.res) || {}; } catch (e) { res = {}; }
+  var testet = Object.keys(NTEST_VARIANTER).filter(function (id) { return NTEST_SVAR[res[id]]; });
+  if (!testet.length) throw new Error('Merk minst én variant før du sender.');
+
+  var cache = CacheService.getScriptCache(), nok = 'ntest_' + Utilities.formatDate(new Date(), 'Europe/Oslo', 'yyyyMMdd');
+  var n = Number(cache.get(nok) || 0) + 1;
+  if (n > NTEST_PER_DAG) throw new Error('Nok tester for i dag. Prøv igjen i morgen.');
+  cache.put(nok, String(n), 21600);
+
+  var app = /-annen$/.test(p.stedId) ? rent(p.app, 40) : '', oppdaget = rent(p.oppdaget, 80), ua = rent(p.ua, 400);
+  var lagret = {};
+  testet.forEach(function (id) { lagret[id] = res[id]; });
+  sheet_(NTEST_ARK).appendRow([new Date().toISOString(), sted + ' (' + p.stedId + ')', app, oppdaget, JSON.stringify(lagret), ua].map(celle_));
+
+  var linjer = Object.keys(NTEST_VARIANTER).map(function (id) { return '- ' + NTEST_VARIANTER[id] + ': ' + (NTEST_SVAR[res[id]] || 'ikke testet'); });
+  var tekst = 'Nettlesertest fra: ' + sted + (app ? ' (' + app + ')' : '') + '\nSiden oppdaget: ' + oppdaget + '\n\n' +
+    linjer.join('\n') + '\n\nNettleser-ID: ' + ua;
+  return { ok: true, sendt: varsle_('Nettlesertest: ' + sted, tekst) };
+}
+
+/** Hvilke apper som er sendt inn, med siste tidspunkt og hvor mange varianter som virket. */
+function nettleserTestListe_() {
+  var steder = {};
+  var ss = SpreadsheetApp.openById(cfg_('SHEET_ID')), sh = ss.getSheetByName(NTEST_ARK);
+  if (sh) sh.getDataRange().getValues().slice(1).forEach(function (r) {
+    var m = String(r[1] || '').match(/\(([a-z-]+)\)$/);
+    if (!m || !NTEST_STEDER[m[1]]) return;
+    var tid = r[0] instanceof Date ? r[0].toISOString() : String(r[0] || '');
+    if (steder[m[1]] && steder[m[1]].tid >= tid) return;
+    var res = {};
+    try { res = JSON.parse(r[4] || '{}'); } catch (e) {}
+    var telling = { ok: 0, delvis: 0, nei: 0 };
+    Object.keys(res).forEach(function (id) { if (telling[res[id]] != null) telling[res[id]]++; });
     steder[m[1]] = { tid: tid, ok: telling.ok, delvis: telling.delvis, nei: telling.nei };
   });
   return { ok: true, steder: steder };
