@@ -426,8 +426,8 @@ function pollPending() {
 /* ------------------------------------------------------------------ */
 
 var PRIVAT_TIMER = 48; // så lenge en ubetalt ordre kan kobles automatisk
-// Hvor ofte utløseren spør banken. Google gir 90 minutter utløsertid per døgn, delt med juletreff-skriptet
-// på samme konto, så hvert minutt bare de første timene etter en ordre, deretter hvert 5. minutt.
+// Hvor ofte utløseren spør banken. Google gir 90 minutter utløsertid per døgn for alle skriptene på
+// Google-kontoen, så hvert minutt bare de første timene etter en ordre, deretter hvert 5. minutt.
 var BANK_STRAKS_TIMER = 2;
 var BANK_OFTE_MIN = 5;
 // E-posten med betalingsinfo sendes først når betalingen ikke har kommet etter så mange minutter.
