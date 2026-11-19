@@ -112,7 +112,7 @@ var NTEST_ARK = 'Nettlesertest';
 // bank_id: transaksjonen i banken som betalte ordren. vipps_navn: navnet kunden betaler fra i Vipps.
 var ORDRE_KOLONNER = ['ordre', 'opprettet', 'status', 'navn', 'epost', 'telefon', 'token',
   'nedlastinger', 'utloper', 'kilde', 'betalt', 'epost_sendt', 'nokkel', 'belop', 'cta', 'partner',
-  'betaling', 'gebyr', 'bank_id', 'vipps_navn'];
+  'betaling', 'gebyr', 'bank_id', 'vipps_navn', 'info_sendt'];
 var BESOK_KOLONNER = ['tid', 'side', 'kilde', 'utm_source', 'utm_campaign', 'enhet', 'besokende', 'partner'];
 // Innbetalinger fra banken som har samme beløp som heftet. Andre innbetalinger lagres ikke.
 var BANK_KOLONNER = ['sett', 'bank_id', 'dato', 'belop', 'navn', 'tekst', 'type', 'bokforing', 'status', 'ordre'];
@@ -409,6 +409,8 @@ function checkOrder_(ordre, nokkel, fraUtloser, sjekkBanken) {
 /** Tidsstyrt utløser (hvert 5. minutt): fullfører ordre der kunden lukket Vipps før retur. */
 function pollPending() {
   try { sendManglendeKvitteringer_(); } catch (err) { console.error(err); }
+  // Reserve hvis bankutløseren ikke går: betalingsinfoen kommer senest etter et kvarter.
+  try { sendVentendeBetalingsinfo_(15); } catch (err) { console.error(err); }
   var sh = sheet_(ORDRE_ARK);
   var vals = sh.getDataRange().getValues();
   var grense = Date.now() - 2 * 36e5;
@@ -424,6 +426,13 @@ function pollPending() {
 /* ------------------------------------------------------------------ */
 
 var PRIVAT_TIMER = 48; // så lenge en ubetalt ordre kan kobles automatisk
+// Hvor ofte utløseren spør banken. Google gir 90 minutter utløsertid per døgn, delt med juletreff-skriptet
+// på samme konto, så hvert minutt bare de første timene etter en ordre, deretter hvert 5. minutt.
+var BANK_STRAKS_TIMER = 2;
+var BANK_OFTE_MIN = 5;
+// E-posten med betalingsinfo sendes først når betalingen ikke har kommet etter så mange minutter.
+// Betaler kunden med en gang, får de bare kvitteringen med heftet.
+var EPOST_VENT_MIN = 5;
 
 /** Kjøp med Vipps privat: lager ordren og sender betalingsinfo på e-post. Kunden betaler fra takkesiden. */
 function createPrivat_(p) {
@@ -449,14 +458,19 @@ function createPrivat_(p) {
     row.cta = CTA_NAVN.indexOf(p.cta) >= 0 ? p.cta : 'annet';
     row.partner = partnerNavn_(p.fra);
     row.navn = navn; row.epost = epost; row.vipps_navn = navn; row.betaling = 'privat';
+    if (bankKlar_()) row.info_sendt = 'venter'; // sendes av utløseren hvis betalingen ikke kommer
     sheet_(ORDRE_ARK).appendRow(ORDRE_KOLONNER.map(function (k) { return celle_(row[k]); }));
     // Utløseren spør banken bare så lenge noen venter på betaling.
-    PropertiesService.getScriptProperties().setProperty('BANK_VENTER_TIL', String(Date.now() + PRIVAT_TIMER * 36e5));
+    PropertiesService.getScriptProperties().setProperties({
+      BANK_STRAKS_TIL: String(Date.now() + BANK_STRAKS_TIMER * 36e5),
+      BANK_VENTER_TIL: String(Date.now() + PRIVAT_TIMER * 36e5)
+    });
   } finally { lock.releaseLock(); }
 
   var site = cfg_('SITE_URL').replace(/\/$/, '');
   var takkUrl = site + '/takk.html?ordre=' + encodeURIComponent(row.ordre) + '&k=' + row.nokkel;
-  if (kanSendeBetalingsinfo_(row.epost)) {
+  // Med banken koblet til venter e-posten med betalingsinfo (se sendVentendeBetalingsinfo_). Uten banken sendes den med en gang.
+  if (row.info_sendt !== 'venter' && kanSendeBetalingsinfo_(row.epost)) {
     try { sendBetalingMail_(row, nr, takkUrl); } catch (err) { console.error('Betalings-e-post feilet for ' + row.ordre + ': ' + err); }
   }
   // Betalingsinfoen følger med, så takkesiden kan vise «Åpne Vipps» med en gang, uten å vente på et nytt kall.
@@ -962,8 +976,52 @@ function sjekkBankUtloser() {
     varsle_(v.emne, v.tekst);
   }
   if (Date.now() > Number(props.getProperty('BANK_VENTER_TIL') || 0) || !bankKlar_()) return;
-  CacheService.getScriptCache().put('bank_sist', '1', 20);
+  var cache = CacheService.getScriptCache();
+  if (Date.now() > Number(props.getProperty('BANK_STRAKS_TIL') || 0)) {
+    if (cache.get('bank_neste')) return;
+    cache.put('bank_neste', '1', BANK_OFTE_MIN * 60 - 30);
+  }
+  // Har alle betalt, trengs ikke banken før neste ordre.
+  if (!harUbetaltPrivat_()) return;
+  cache.put('bank_sist', '1', 20);
   sjekkBank_();
+  // Etter banksjekken, så den som nettopp betalte, får kvitteringen og ikke betalingsinfo.
+  try { sendVentendeBetalingsinfo_(EPOST_VENT_MIN); } catch (err) { console.error(err); }
+}
+
+function harUbetaltPrivat_() {
+  var vals = sheet_(ORDRE_ARK).getDataRange().getValues(), O = {};
+  ORDRE_KOLONNER.forEach(function (k, i) { O[k] = i; });
+  var grense = Date.now() - PRIVAT_TIMER * 36e5;
+  for (var i = vals.length - 1; i >= 1; i--) {
+    var v = vals[i];
+    if (v[O.betaling] === 'privat' && v[O.status] === 'VENTER_BANK' && new Date(v[O.opprettet]).getTime() > grense) return true;
+  }
+  return false;
+}
+
+/**
+ * Sender betalingsinfo til privat-ordrer som har ventet mer enn «min» minutter uten å bli betalt.
+ * Bare ordrer der info_sendt er «venter» (satt når ordren ble laget med banken koblet til). Etterpå står
+ * tidspunktet der, så hver ordre får e-posten høyst én gang.
+ */
+function sendVentendeBetalingsinfo_(min) {
+  var nr = privatNr_();
+  if (!nr) return;
+  var sh = sheet_(ORDRE_ARK), vals = sh.getDataRange().getValues(), O = {};
+  ORDRE_KOLONNER.forEach(function (k, i) { O[k] = i; });
+  var site = cfg_('SITE_URL').replace(/\/$/, ''), naa = Date.now();
+  for (var i = 1; i < vals.length; i++) {
+    var v = vals[i];
+    if (v[O.betaling] !== 'privat' || v[O.status] !== 'VENTER_BANK' || v[O.info_sendt] !== 'venter') continue;
+    var alder = naa - new Date(v[O.opprettet]).getTime();
+    if (alder < min * 60000 || alder > PRIVAT_TIMER * 36e5) continue;
+    var data = {}; ORDRE_KOLONNER.forEach(function (k, j) { data[k] = v[j]; });
+    updateOrder_(i + 1, { info_sendt: new Date() }); // også om e-posten ikke kan sendes, så den ikke prøves hvert minutt
+    if (!kanSendeBetalingsinfo_(data.epost)) continue;
+    var takkUrl = site + '/takk.html?ordre=' + encodeURIComponent(data.ordre) + '&k=' + data.nokkel;
+    try { sendBetalingMail_(data, nr, takkUrl); } catch (err) { console.error('Betalings-e-post feilet for ' + data.ordre + ': ' + err); }
+  }
 }
 
 function sikreBankUtloser_() {

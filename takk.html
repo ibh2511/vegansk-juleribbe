@@ -46,6 +46,13 @@
 .prikk{width:10px;height:10px;border-radius:50%;background:var(--vipps);animation:puls 1.4s ease-in-out infinite}
 @keyframes puls{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
 .liten-feil{color:var(--red-dark);font-size:14px;text-align:center;margin-top:8px}
+.har-betalt{display:block;margin:16px auto 0;font:inherit;font-weight:700;font-size:16px;border:1.5px solid var(--green);color:var(--green);background:#fff;border-radius:999px;padding:10px 22px;cursor:pointer;min-height:46px}
+.sjekker{text-align:center}
+.sjekker-ikon{width:64px;height:64px;margin:14px auto 6px;border-radius:50%;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.sjekker-ikon .prikk{width:18px;height:18px}
+.sjekker .ingress{margin-bottom:6px}
+.vente-hjelp{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:14px;font-size:15px;text-align:left}
+.lenkeknapp{background:none;border:0;color:var(--red);text-decoration:underline;cursor:pointer;font:inherit;font-size:15px;padding:6px;margin-top:12px}
 </style>
 </head>
 <body>
@@ -63,6 +70,10 @@
   var boks=document.getElementById('boks');
   var q=new URLSearchParams(location.search), ordre=q.get('ordre')||'', k=q.get('k')||'';
   var forsok=0, feilPaRad=0, privat=null, startet=Date.now(), timer=null;
+  // Har kunden trykket «Jeg har betalt» eller kommet tilbake fra Vipps, viser siden «Vi ser etter betalingen din»
+  // i stedet for betalingsstegene, så ingen tror de må betale på nytt. Huskes om siden lastes på nytt.
+  var betaltNokkel='vj_betalt_'+ordre, venterFra=0, forlot=false;
+  try{ venterFra=Number(sessionStorage.getItem(betaltNokkel)||0); }catch(e){}
   function vis(html){ boks.innerHTML=html; }
   // Vipps bedrift: kunden har betalt inne i Vipps og kommer tilbake hit. Vipps privat: kunden har ikke betalt ennå.
   if(q.get('retur')==='vipps'){ var h=boks.querySelector('h1'); if(h) h.textContent='Sjekker betalingen …'; }
@@ -101,18 +112,36 @@
           '<div class="belop-stor">'+esc(kr)+'</div><small>'+naar+'</small></div></li>'+
       '</ol>';
     }
+    var kommer=d.automatisk?'Heftet dukker opp her og kommer på e-post så snart betalingen er registrert, vanligvis i løpet av få minutter.':'Heftet kommer på e-post så snart betalingen er registrert.';
     boks.className='box betal';
-    vis('<span class="eyebrow">Ordre '+esc(d.ordre)+'</span><h1>Betal '+esc(kr)+' med Vipps</h1>'+
+    vis('<div id="betalDel"><span class="eyebrow">Ordre '+esc(d.ordre)+'</span><h1>Betal '+esc(kr)+' med Vipps</h1>'+
       '<p class="ingress">Heftet kommer her og på e-post så snart betalingen er registrert.</p>'+trinn+
-      '<p class="fra" id="fra">Betal fra Vipps-kontoen til <b id="fraNavn">'+esc(d.navn)+'</b>, så finner vi betalingen din. '+
+      '<button class="har-betalt" type="button" id="harBetalt">Jeg har betalt</button></div>'+
+      '<div id="venteDel" class="sjekker" hidden><span class="eyebrow">Ordre '+esc(d.ordre)+'</span>'+
+        '<div class="sjekker-ikon" aria-hidden="true"><span class="prikk"></span></div>'+
+        '<h1>Vi ser etter betalingen din</h1>'+
+        '<p class="ingress">Har du betalt '+esc(kr)+', er du ferdig og trenger ikke betale igjen. '+kommer+'</p>'+
+        '<div class="vente-hjelp" id="venteHjelp" hidden>Har det gått lang tid? Sjekk i Vipps at betalingen gikk til <b>'+esc(d.mottaker)+'</b> og var på <b>'+esc(kr)+'</b>. '+
+          'Ser alt riktig ut, skriv til <a href="mailto:'+VJ_KONTAKT+'">'+VJ_KONTAKT+'</a> med ordrenummer '+esc(d.ordre)+', så ordner vi det. Ikke betal på nytt.</div>'+
+        '<button class="lenkeknapp" type="button" id="visBetaling">Har du ikke betalt ennå? Vis betalingen</button></div>'+
+      '<p class="fra" id="fra"><span id="fraTekst">Betal fra Vipps-kontoen til <b id="fraNavn">'+esc(d.navn)+'</b>, så finner vi betalingen din. </span>'+
         '<button type="button" id="endre">Betaler du fra en annens Vipps?</button></p>'+
       '<form class="nytt-navn" id="nyttNavn" hidden><input id="navnFelt" autocomplete="off" placeholder="Fullt navn på Vipps-kontoen" maxlength="80" required>'+
         '<button class="btn" type="submit">Lagre</button></form><p class="liten-feil" id="navnFeil" hidden></p>'+
       '<div class="venter" role="status"><span class="prikk" aria-hidden="true"></span><span id="venterTekst">Venter på betalingen …</span></div>'+
       '<p class="liten-feil" id="sjekkFeil" hidden></p>');
     privat=d; // først når boksen faktisk er tegnet
+    document.getElementById('harBetalt').onclick=harBetalt;
+    document.getElementById('visBetaling').onclick=function(){
+      venterFra=0; try{ sessionStorage.removeItem(betaltNokkel); }catch(e){}
+      visModus(); window.scrollTo(0,0);
+    };
+    ['aapne'].forEach(function(id){ var a=document.getElementById(id); if(a) a.addEventListener('click',function(){ forlot=true; }); });
+    var res=boks.querySelector('.reserve'); if(res) res.addEventListener('click',function(){ forlot=true; });
+    visModus();
     var kb=document.getElementById('kopier');
     if(kb) kb.onclick=function(){
+      forlot=true; // kopierer kunden og går til Vipps selv, regnes det som at de har vært borte
       vjVipps.kopier(nr).then(function(){ kb.textContent='Kopiert!'; kb.classList.add('ok'); setTimeout(function(){ kb.textContent='Kopier'; kb.classList.remove('ok'); },2500); })
         .catch(function(){ kb.textContent='Hold inne nummeret for å kopiere'; });
     };
@@ -127,6 +156,19 @@
     };
   }
 
+  function harBetalt(){
+    if(!venterFra){ venterFra=Date.now(); try{ sessionStorage.setItem(betaltNokkel,String(venterFra)); }catch(e){} }
+    visModus(); window.scrollTo(0,0); planlegg(300);
+  }
+  function visModus(){
+    var b=document.getElementById('betalDel'), v=document.getElementById('venteDel'), st=boks.querySelector('.venter');
+    if(!b||!v) return;
+    b.hidden=!!venterFra; v.hidden=!venterFra; if(st) st.hidden=!!venterFra;
+    var ft=document.getElementById('fraTekst'), en=document.getElementById('endre');
+    if(ft) ft.hidden=!!venterFra; if(en) en.textContent=venterFra?'Betalte du fra en annens Vipps? Skriv navnet på kontoen':'Betaler du fra en annens Vipps?';
+    var h=document.getElementById('venteHjelp'); if(h) h.hidden=!(venterFra && Date.now()-venterFra>20*60000);
+  }
+
   function planlegg(ms){ clearTimeout(timer); timer=setTimeout(sjekk,ms); }
   function sjekk(){
     // Første kall svarer med en gang. Når betalingsboksen vises, ber siden backend om å spørre banken også.
@@ -139,7 +181,7 @@
       var sf=document.getElementById('sjekkFeil'); if(sf) sf.hidden=true;
       if(d.status==='BETALT') return visBetalt(d);
       if(d.status==='VENTER_BANK'){
-        visBetaling(d);
+        visBetaling(d); visModus();
         // Hvert 10. sekund den første timen, deretter hvert minutt. Backend spør banken høyst hvert 20. sekund.
         if(document.visibilityState!=='hidden') planlegg(Date.now()-startet<36e5?10000:60000);
         return;
@@ -169,6 +211,7 @@
   }
   // Kunden kommer tilbake fra Vipps-appen: sjekk med en gang i stedet for å vente på neste runde.
   document.addEventListener('visibilitychange',function(){
+    if(document.visibilityState==='visible' && privat && forlot){ forlot=false; harBetalt(); return; }
     if(document.visibilityState==='visible' && privat){ var t=document.getElementById('venterTekst'); if(t) t.textContent='Ser om betalingen har kommet …'; planlegg(300); setTimeout(function(){ if(t) t.textContent='Venter på betalingen …'; },4000); }
   });
   // Kommer kunden rett fra kjøpet, har forsiden lagt igjen betalingsinfoen. Da vises «Åpne Vipps» med en gang.
