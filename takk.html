@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/side.css">
 <script src="assets/config.js"></script><script src="assets/api.js"></script>
-<script src="assets/vipps.js"></script><script src="assets/qrcode.min.js"></script>
+<script src="assets/vipps.js?v=2"></script><script src="assets/qrcode.min.js"></script>
 <title>Takk for kjøpet</title>
 <style>
 /* Betalingsboksen for Vipps privat */
@@ -112,8 +112,11 @@
   // Vipps privat: kunden vippser til et mobilnummer. Boksen tegnes én gang, og siden sjekker videre i bakgrunnen.
   function visBetaling(d){
     if(privat){ return; }
+    var nr=String(d.nr||'').replace(/\D/g,'');
+    // Lenken lages her fra nummeret, med 47 foran, så knappen virker selv om backend ikke er oppdatert.
+    d.lenke=nr.length>=8?vjVipps.https(nr):d.lenke;
     var m=vjVipps.miljo(), l=vjVipps.lenker(d.lenke), v=vjVipps.valg(m);
-    var kr=d.belop+' kr', nr=String(d.nr||'').replace(/\D/g,'');
+    var kr=d.belop+' kr';
     var naar=d.automatisk?'Siden oppdaterer seg selv når betalingen er kommet, vanligvis i løpet av kort tid.':'Heftet kommer på e-post så snart betalingen er registrert.';
     var trinn;
     if(m.mobil){
