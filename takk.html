@@ -27,13 +27,23 @@
 .trinn li.enkel{grid-template-columns:1fr}
 .trinn b{display:block;color:var(--ink);font-size:17px;line-height:1.3;margin-top:5px}
 .trinn small{display:block;color:var(--muted);font-size:14.5px;line-height:1.45;margin-top:4px}
-.kopier{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
 .tlf{font-family:"Playfair Display",Georgia,serif;font-size:26px;font-weight:700;letter-spacing:.04em;color:var(--ink)}
 .knapp-liten{font:inherit;font-weight:700;font-size:15px;border:1.5px solid var(--green);color:var(--green);background:#fff;border-radius:999px;padding:7px 16px;cursor:pointer;min-height:40px}
 .knapp-liten.ok{background:var(--green);color:var(--cream)}
 .btn.vipps{background:var(--vipps);width:100%;margin-top:10px;box-shadow:0 6px 18px rgba(255,91,36,.3)}
-/* «Åpnet ikke Vipps?» på én linje og lenken på linjen under, så streken bare står under lenken */
-.reserve-rad{margin:10px 0 0;font-size:14.5px;line-height:1.6;color:var(--muted)}
+/* Steg 1 på mobil er bare «Åpne Vipps». Rett under, midtstilt: «Åpnet ikke Vipps?» og lenken på linjen under,
+   så streken bare står under lenken. */
+.trinn li.knapp .btn.vipps{margin-top:0}
+.trinn li.knapp .nr{margin-top:11px}
+.trinn .under-knapp{margin:10px 0 0;text-align:center;font-size:14.5px;line-height:1.6;color:var(--muted)}
+.trinn .under-knapp .hvis{display:block}
+/* Steg 2: nummeret og «Kopier» samlet i et felt, for den som må lime inn nummeret selv. Er det for smalt
+   til at de står ved siden av hverandre (320 px), står de over hverandre. */
+.felt{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 8px;margin-top:10px;padding:5px 5px 5px 12px;background:var(--paper);border:1px solid var(--line);border-radius:10px}
+.felt .tlf{font-size:19px}
+.felt .knapp-liten{min-height:34px;padding:4px 14px;font-size:14px;border-color:transparent;background:rgba(31,61,43,.09)}
+.felt .knapp-liten.ok{background:var(--green);color:var(--cream)}
+@media(max-width:359px){.felt{justify-content:flex-start;padding:8px 12px}}
 /* PC: nummer og beløp under QR-koden, som to rader */
 .fakta{margin:8px 0 0}
 .fakta>div{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;min-height:54px;padding:6px 0;border-top:1px solid var(--line)}
@@ -46,7 +56,23 @@
 .qr b{display:block;font-size:18px;color:var(--ink);line-height:1.3}
 @media(max-width:520px){.qr{grid-template-columns:1fr;justify-items:center;text-align:center}}
 .fra{margin-top:16px!important;font-size:15px;text-align:center}
-.fra button{background:none;border:0;color:var(--red);text-decoration:underline;cursor:pointer;font:inherit;padding:2px}
+/* «Betaler du fra en annens Vipps?» folder ut navnefeltet. Pilen viser at noe åpner seg, og snur når det er åpent. */
+.fra .annen{display:block;width:fit-content;max-width:100%;margin:2px auto 0;padding:2px 8px;border:0;background:none;color:var(--muted);font:inherit;font-size:15px;line-height:1.6;text-align:center;text-wrap:balance;cursor:pointer}
+/* Pilen står rett etter teksten, også når teksten deler seg på smale skjermer */
+.fra .annen::after{content:"";position:relative;top:-3px;display:inline-block;width:7px;height:7px;margin-left:10px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);transition:transform .2s ease,top .2s ease}
+.fra .annen[aria-expanded="true"]::after{top:1px;transform:rotate(-135deg)}
+@media(hover:hover){.fra .annen:hover{color:var(--ink)}}
+.fra .annen:focus:not(:focus-visible){outline:none}
+@media (prefers-reduced-motion:reduce){.fra .annen::after{transition:none}}
+/* Nederst under stegene: en prikk som pulserer, så det synes at siden ser etter betalingen. Etter 5 minutter
+   står det «Venter fortsatt på betalingen». */
+.betal .venter{display:flex;align-items:center;justify-content:center;gap:12px;margin:16px 0 0;font-size:14px;letter-spacing:.02em;color:var(--muted)}
+.venter-prikk{position:relative;flex:none;width:10px;height:10px}
+.venter-prikk::before,.venter-prikk::after{content:"";position:absolute;border-radius:50%}
+.venter-prikk::before{inset:0;background:var(--vipps);box-shadow:0 0 6px rgba(255,91,36,.55);animation:prikk 2.4s ease-in-out infinite}
+.venter-prikk::after{inset:-7px;border:2px solid rgba(255,91,36,.8);opacity:0;animation:radar 2.4s cubic-bezier(.2,.6,.35,1) infinite}
+@keyframes prikk{0%,45%,100%{transform:scale(1);box-shadow:0 0 6px rgba(255,91,36,.55)}14%{transform:scale(1.3);box-shadow:0 0 10px rgba(255,91,36,.9)}}
+@media (prefers-reduced-motion:reduce){.venter-prikk::before{animation:none}.venter-prikk::after{animation:none;opacity:.35;transform:scale(.8)}}
 .nytt-navn{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
 .nytt-navn .btn{margin-top:0;min-height:46px;font-size:16px;padding:10px 18px}
 .liten-feil{color:var(--red-dark);font-size:14px;text-align:center;margin-top:8px}
@@ -95,6 +121,9 @@
   // «Har du betalt …», så den stemmer også for den som ikke betalte, og stegene er ett trykk unna.
   // Huskes om siden lastes på nytt.
   var betaltNokkel='vj_betalt_'+ordre, venterFra=0, forlot=false;
+  // Når betalingsstegene ble vist (ved start, eller etter «Vis betalingen»). Etter 5 minutter sier linjen
+  // nederst «Venter fortsatt på betalingen».
+  var stegFra=Date.now(), FORTSATT=5*60000, venterTimer=null;
   try{ venterFra=Number(sessionStorage.getItem(betaltNokkel)||0); }catch(e){}
   function vis(html){ boks.innerHTML=html; }
   // Vipps bedrift: kunden har betalt inne i Vipps og kommer tilbake hit. Vipps privat: kunden har ikke betalt ennå.
@@ -117,16 +146,16 @@
     d.lenke=nr.length>=8?vjVipps.https(nr):d.lenke;
     var m=vjVipps.miljo(), l=vjVipps.lenker(d.lenke), v=vjVipps.valg(m);
     var kr=d.belop+' kr';
-    var naar=d.automatisk?'Siden oppdaterer seg selv når betalingen er kommet, vanligvis i løpet av kort tid.':'Heftet kommer på e-post så snart betalingen er registrert.';
+    var naar=d.automatisk?'Siden oppdaterer seg selv når betalingen er kommet, som regel raskt.':'Heftet kommer på e-post så snart betalingen er registrert.';
     var trinn;
     if(m.mobil){
+      // Tre steg: «Åpne Vipps» først, siden den virker for de fleste. Nummeret og «Kopier» står i steg 2, der de trengs.
       trinn='<ol class="trinn">'+
-        '<li><span class="nr">1</span><div><b>Kopier mobilnummeret</b><div class="kopier"><span class="tlf">'+esc(d.mottaker)+'</span><button class="knapp-liten" type="button" id="kopier">Kopier</button></div></div></li>'+
-        '<li><span class="nr">2</span><div><b>Åpne Vipps</b><a class="btn vipps" id="aapne" href="'+esc(l[v.hoved])+'">Åpne Vipps</a>'+
-          '<p class="reserve-rad">Åpnet ikke Vipps?<br><a class="reserve" href="'+esc(l[v.reserve])+'">Prøv denne lenken</a></p>'+
-          '<small>Virker ingen av dem, åpner du Vipps-appen selv og limer inn nummeret.</small></div></li>'+
-        '<li><span class="nr">3</span><div><b>Skriv inn '+esc(kr)+' og betal</b><small>Nummeret er fylt ut, men beløpet skriver du selv. Mangler nummeret, limer du det inn fra steg 1.</small></div></li>'+
-        '<li><span class="nr">4</span><div><b>Kom tilbake hit</b><small>'+naar+'</small></div></li>'+
+        '<li class="knapp"><span class="nr">1</span><div><a class="btn vipps" id="aapne" href="'+esc(l[v.hoved])+'">Åpne Vipps</a>'+
+          '<p class="under-knapp"><span class="hvis">Åpnet ikke Vipps?</span><a class="reserve" href="'+esc(l[v.reserve])+'">Prøv denne lenken</a></p></div></li>'+
+        '<li class="nummer"><span class="nr">2</span><div><b>Skriv inn '+esc(kr)+' og betal</b><small>Nummeret er fylt ut, beløpet skriver du selv. Mangler nummeret? <span class="nowrap">Lim det inn:</span></small>'+
+          '<div class="felt"><span class="tlf">'+esc(d.mottaker)+'</span><button class="knapp-liten" type="button" id="kopier">Kopier</button></div></div></li>'+
+        '<li><span class="nr">3</span><div><b>Kom tilbake hit</b><small>'+naar+'</small></div></li>'+
       '</ol>';
     } else {
       var svg=vjVipps.qrSvg(d.lenke);
@@ -151,9 +180,10 @@
         '<dl class="fakta vente-kort"><div><dt>Beløp</dt><dd>'+esc(kr)+'</dd></div><div><dt>Til</dt><dd>'+esc(d.mottaker)+'</dd></div>'+
           '<div><dt>Fra</dt><dd><span id="venteNavn">'+esc(d.navn)+'</span><button type="button" class="knapp-liten" id="venteEndre" aria-expanded="false">Endre</button></dd></div></dl></div>'+
       '<p class="fra" id="fra"><span id="fraTekst">Betal fra Vipps-kontoen til <b id="fraNavn">'+esc(d.navn)+'</b>, så finner vi betalingen din. </span>'+
-        '<button type="button" id="endre">Betaler du fra en annens Vipps?</button></p>'+
+        '<button type="button" class="annen" id="endre" aria-expanded="false" aria-controls="nyttNavn">Betaler du fra en annens Vipps?</button></p>'+
       '<form class="nytt-navn" id="nyttNavn" hidden><input id="navnFelt" autocomplete="off" placeholder="Fullt navn på Vipps-kontoen" maxlength="80" required>'+
         '<button class="btn" type="submit">Lagre</button></form><p class="liten-feil" id="navnFeil" hidden></p>'+
+      '<p class="venter" id="venter" role="status"><span class="venter-prikk" aria-hidden="true"></span><span id="venterTekst">Venter på betalingen</span></p>'+
       '<div id="venteBunn" hidden><p class="vente-tekst">'+kommer+'</p>'+
         '<div class="vente-hjelp" id="venteHjelp" hidden>Har det gått mer enn 20 minutter? Sjekk i Vipps at du betalte <b>'+esc(kr)+'</b> til <b>'+esc(d.mottaker)+'</b>. '+
           'Betalte du fra en annens Vipps, trykker du «Endre» og skriver navnet. Ser alt riktig ut, skriver du til <a href="mailto:'+VJ_KONTAKT+'">'+VJ_KONTAKT+'</a> med ordrenummer '+esc(d.ordre)+', så ordner vi det. Ikke betal på nytt.</div>'+
@@ -163,19 +193,31 @@
     privat=d; // først når boksen faktisk er tegnet
     document.getElementById('visBetaling').onclick=function(){
       venterFra=0; try{ sessionStorage.removeItem(betaltNokkel); }catch(e){}
-      visModus(); window.scrollTo(0,0);
+      stegFra=Date.now(); visModus(); window.scrollTo(0,0);
     };
-    [document.getElementById('aapne'), boks.querySelector('.reserve')].forEach(function(a){ if(a) a.addEventListener('click',function(){ forlot=true; }); });
+    var kb=document.getElementById('kopier'), kbTimer=null;
+    var visKopiert=function(){
+      kb.textContent='Kopiert!'; kb.classList.add('ok'); clearTimeout(kbTimer);
+      kbTimer=setTimeout(function(){ kb.textContent='Kopier'; kb.classList.remove('ok'); },2500);
+    };
+    // «Åpne Vipps» kopierer også nummeret, i tilfelle det ikke blir fylt ut i Vipps. Går det ikke, sier vi ingenting:
+    // nummeret og «Kopier» står i steg 2.
+    [document.getElementById('aapne'), boks.querySelector('.reserve')].forEach(function(a){
+      if(a) a.addEventListener('click',function(){
+        forlot=true;
+        if(kb && !kb.classList.contains('ok')) vjVipps.kopier(nr).then(visKopiert).catch(function(){});
+      });
+    });
     visModus();
-    var kb=document.getElementById('kopier');
     if(kb) kb.onclick=function(){
       forlot=true; // kopierer kunden og går til Vipps selv, regnes det som at de har vært borte
-      vjVipps.kopier(nr).then(function(){ kb.textContent='Kopiert!'; kb.classList.add('ok'); setTimeout(function(){ kb.textContent='Kopier'; kb.classList.remove('ok'); },2500); })
-        .catch(function(){ kb.textContent='Hold inne nummeret for å kopiere'; });
+      vjVipps.kopier(nr).then(visKopiert).catch(function(){ kb.textContent='Hold inne nummeret for å kopiere'; });
     };
+    // Navnefeltet åpnes fra pilen under stegene eller «Endre» på venteskjermen
+    var aapent=function(ja){ ['endre','venteEndre'].forEach(function(id){ document.getElementById(id).setAttribute('aria-expanded',String(ja)); }); };
     var veksleNavn=function(){
       var f=document.getElementById('nyttNavn'); f.hidden=!f.hidden;
-      document.getElementById('venteEndre').setAttribute('aria-expanded',String(!f.hidden));
+      aapent(!f.hidden);
       if(!f.hidden) document.getElementById('navnFelt').focus();
     };
     document.getElementById('endre').onclick=veksleNavn;
@@ -186,7 +228,7 @@
       vjPost({action:'navn',ordre:ordre,k:k,navn:felt.value}).then(function(r){
         if(!r.ok){ feil.textContent=r.error||'Noe gikk galt'; feil.hidden=false; return; }
         feil.hidden=true; document.getElementById('fraNavn').textContent=r.navn; document.getElementById('venteNavn').textContent=r.navn;
-        document.getElementById('nyttNavn').hidden=true; document.getElementById('venteEndre').setAttribute('aria-expanded','false');
+        document.getElementById('nyttNavn').hidden=true; aapent(false);
       }).catch(function(){ feil.textContent='Fikk ikke lagret navnet. Prøv igjen.'; feil.hidden=false; });
     };
   }
@@ -200,9 +242,19 @@
     if(!b||!v) return;
     b.hidden=!!venterFra; v.hidden=!venterFra;
     // Navnet står i kortet på venteskjermen, så linjen under stegene trengs bare der
-    var fra=document.getElementById('fra'), bunn=document.getElementById('venteBunn');
-    if(fra) fra.hidden=!!venterFra; if(bunn) bunn.hidden=!venterFra;
+    var fra=document.getElementById('fra'), bunn=document.getElementById('venteBunn'), ve=document.getElementById('venter');
+    if(fra) fra.hidden=!!venterFra; if(bunn) bunn.hidden=!venterFra; if(ve) ve.hidden=!!venterFra;
+    oppdaterVenter();
     var h=document.getElementById('venteHjelp'); if(h) h.hidden=!(venterFra && Date.now()-venterFra>20*60000);
+  }
+
+  // Linjen nederst under stegene: «Venter på betalingen», og «Venter fortsatt …» når stegene har stått i 5 minutter
+  function oppdaterVenter(){
+    var t=document.getElementById('venterTekst'); if(!t) return;
+    var igjen=stegFra+FORTSATT-Date.now();
+    t.textContent=igjen>0?'Venter på betalingen':'Venter fortsatt på betalingen';
+    clearTimeout(venterTimer);
+    if(igjen>0 && !venterFra) venterTimer=setTimeout(oppdaterVenter,igjen+100);
   }
 
   function planlegg(ms){ clearTimeout(timer); timer=setTimeout(sjekk,ms); }
