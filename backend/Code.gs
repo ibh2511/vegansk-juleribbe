@@ -159,7 +159,8 @@ function privatNr_() { return String(cfg_('VIPPS_PRIVAT_NR', '')).replace(/\D/g,
  */
 function vippsLenke_(nr) {
   var d = String(nr || '').replace(/\D/g, '');
-  if (d.length === 10 && d.slice(0, 2) === '47') d = d.slice(2);
+  // Mobilnummeret er de siste 8 sifrene, også om det står +47, 0047 eller 47 foran i admin.
+  if (d.length > 8) d = d.slice(-8);
   return 'https://qr.vipps.no/28/2/01/031/47' + d + '?v=1';
 }
 
