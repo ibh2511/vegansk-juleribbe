@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/side.css">
-<script src="assets/config.js"></script><script src="assets/api.js"></script>
+<script src="assets/config.js"></script><script src="assets/api.js"></script><script src="assets/nettleser.js"></script>
 <script src="assets/vipps.js?v=2"></script><script src="assets/qrcode.min.js"></script>
 <title>Takk for kjøpet</title>
 <style>
@@ -176,7 +176,7 @@
     var kommer=d.automatisk?'Heftet dukker opp her og kommer på '+ePost+' så snart betalingen er registrert.':'Heftet kommer på '+ePost+' så snart betalingen er registrert.';
     boks.className='box betal';
     vis('<div id="betalDel"><span class="eyebrow">Ordre '+esc(d.ordre)+'</span><h1>Betal '+esc(kr)+' med Vipps</h1>'+
-      '<p class="ingress">Heftet kommer her og på e-post når betalingen er registrert. Betal fra <span class="nowrap">Vipps-kontoen</span> til <b class="nowrap" id="fraNavn">'+esc(d.navn)+'</b>, så finner vi betalingen.</p>'+trinn+'</div>'+
+      '<p class="ingress">Heftet kommer her og på e-post når betalingen er registrert. Betal fra <span class="nowrap">Vipps-kontoen</span> til <b id="fraNavn">'+esc(d.navn)+'</b>, så finner vi betalingen.</p>'+trinn+'</div>'+
       '<div id="venteDel" class="sjekker" hidden><span class="eyebrow">Ordre '+esc(d.ordre)+'</span>'+
         '<div class="radar" aria-hidden="true"><span></span></div>'+
         '<h1 role="status">Vi ser etter betalingen din</h1>'+
