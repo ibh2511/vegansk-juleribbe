@@ -112,6 +112,24 @@ a.btn.vipps{animation:vippsPuls 3s ease-in-out infinite}
 .vente-hjelp b{display:block;margin-bottom:4px;color:var(--ink)}
 /* Spørsmålet på én linje og lenken på linjen under */
 .tilbake-rad{margin-top:28px!important;text-align:center;color:var(--muted);font-size:15px;line-height:1.6}
+/* Betalt: et rødt kort i samme stil som delingsbildet, med gullramme og stjerne, og nedlastingen under */
+.box.betalt{padding:0;overflow:hidden}
+.betalt-topp{position:relative;background:var(--red);color:var(--cream);padding:30px 22px 26px;text-align:center}
+.betalt-topp::before{content:"";position:absolute;inset:8px;border:1px solid rgba(200,160,74,.75);border-radius:10px;pointer-events:none}
+.betalt-topp .stjerne{display:block;width:30px;height:30px;margin:0 auto 10px;color:#f3d48c;animation:glimt 3s ease-in-out infinite}
+@keyframes glimt{0%,100%{transform:scale(1) rotate(0);opacity:1}50%{transform:scale(1.15) rotate(12deg);opacity:.85}}
+.betalt-topp .eyebrow{display:block;color:#f3d48c;font-weight:700;font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap}
+.box.betalt .betalt-topp h1{color:var(--cream);font-size:34px;margin:6px 0 4px}
+.betalt-topp .kursiv{font-family:"Playfair Display",Georgia,serif;font-style:italic;color:#f3d48c;font-size:19px;margin:0}
+.betalt-innhold{padding:22px 22px 26px}
+.registrert{display:inline-flex;align-items:center;gap:8px;background:rgba(31,61,43,.09);color:var(--green);font-weight:700;font-size:15px;border-radius:999px;padding:6px 14px 6px 8px}
+.registrert svg{width:22px;height:22px;flex:none}
+.box.betalt .btn.last{display:flex;width:100%;gap:10px;margin-top:18px;box-shadow:0 6px 18px rgba(31,61,43,.25)}
+.btn.last svg{width:20px;height:20px}
+.box.betalt p.epost{font-size:15.5px;line-height:1.55;margin-top:16px;text-wrap:pretty}
+.box.betalt p.epost b{color:var(--ink);overflow-wrap:anywhere}
+.god-jul{margin-top:18px;padding-top:16px;border-top:1px dashed var(--line);font-family:"Playfair Display",Georgia,serif;font-style:italic;font-size:18px;color:var(--red-dark)}
+@media (prefers-reduced-motion:reduce){.betalt-topp .stjerne{animation:none}}
 .lenkeknapp{background:none;border:0;color:var(--red);text-decoration:underline;cursor:pointer;font:inherit;padding:0}
 </style>
 </head>
@@ -148,10 +166,17 @@ a.btn.vipps{animation:vippsPuls 3s ease-in-out infinite}
 
   function visBetalt(d){
     clearTimeout(timer);
-    boks.className='box';
-    vis('<h1>Takk for kjøpet! 🎄</h1><p>Betalingen er godkjent. Ordrenummer <b>'+esc(ordre)+'</b>.</p>'+
-      (d.token?'<a class="btn" href="last-ned.html?t='+encodeURIComponent(d.token)+'">Last ned heftet</a>':'')+
-      '<p style="margin-top:18px">Vi har også sendt nedlastingslenken til <b>'+esc(d.epost||'e-posten din')+'</b>. Sjekk søppelpost hvis den ikke dukker opp.</p>');
+    boks.className='box betalt';
+    vis('<div class="betalt-topp">'+
+        '<svg class="stjerne" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 0l2.4 8.1L22 5l-5 6.6L24 12l-7 1.4 5 6.6-7.6-3.1L12 24l-2.4-7.1L2 20l5-6.6L0 12l7-.4L2 5l7.6 3.1z"/></svg>'+
+        '<span class="eyebrow">Ordre '+esc(ordre)+'</span>'+
+        '<h1>Takk for kjøpet!</h1><p class="kursiv">Nå kan julen komme</p></div>'+
+      '<div class="betalt-innhold">'+
+        '<span class="registrert"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#1f3d2b"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#f8f1e3" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Betalingen er registrert</span>'+
+        (d.token?'<a class="btn last" href="last-ned.html?t='+encodeURIComponent(d.token)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 20h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Last ned heftet</a>':'')+
+        '<p class="epost">Vi har også sendt nedlastingslenken til <b>'+esc(d.epost||'e-posten din')+'</b>. Sjekk søppelpost hvis den ikke dukker opp.</p>'+
+        '<p class="god-jul">God jul, og lykke til med ribba! 🎄</p>'+
+      '</div>');
   }
 
   // Vipps privat: kunden vippser til et mobilnummer. Boksen tegnes én gang, og siden sjekker videre i bakgrunnen.
