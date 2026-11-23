@@ -34,6 +34,18 @@
 /* Steg 1 på mobil er bare «Åpne Vipps». Rett under, midtstilt, står «Åpnet ikke Vipps?», som selv er lenken
    som prøver Vipps på en annen måte. */
 .trinn li.knapp .btn.vipps{margin-top:0}
+/* Et rolig hjerteslag rundt «Åpne Vipps» (dunk-dunk, så lang pause) som trekker blikket til neste steg, som på juletreff */
+a.btn.vipps{animation:vippsPuls 3s ease-in-out infinite}
+@keyframes vippsPuls{
+  0%{transform:scale(1);box-shadow:0 6px 18px rgba(255,91,36,.3),0 0 0 0 rgba(255,91,36,.28)}
+  6%{transform:scale(1.025)}
+  12%{transform:scale(1)}
+  18%{transform:scale(1.02)}
+  30%{transform:scale(1)}
+  40%{box-shadow:0 6px 18px rgba(255,91,36,.3),0 0 0 9px rgba(255,91,36,0)}
+  41%,100%{transform:scale(1);box-shadow:0 6px 18px rgba(255,91,36,.3),0 0 0 0 rgba(255,91,36,0)}
+}
+@media(prefers-reduced-motion:reduce){a.btn.vipps{animation:none}}
 .trinn li.knapp .nr{margin-top:11px}
 .trinn .under-knapp{margin:10px 0 0;text-align:center;font-size:14.5px;line-height:1.6;color:var(--muted)}
 .trinn .under-knapp .reserve{color:var(--muted)}
@@ -157,7 +169,7 @@
       trinn='<ol class="trinn">'+
         '<li class="knapp"><span class="nr">1</span><div><a class="btn vipps" id="aapne" href="'+esc(l[v.hoved])+'">Åpne Vipps</a>'+
           '<p class="under-knapp"><a class="reserve" href="'+esc(l[v.reserve])+'">Åpnet ikke Vipps?</a></p></div></li>'+
-        '<li class="nummer"><span class="nr">2</span><div><b>Skriv inn '+esc(kr)+' og betal</b><small>Nummeret er fylt ut, beløpet skriver du selv. Mangler nummeret?</small>'+
+        '<li class="nummer"><span class="nr">2</span><div><b>Skriv inn '+esc(kr)+' og betal</b><small>Nummeret er fylt ut, og beløpet er kopiert. Mangler nummeret?</small>'+
           '<div class="felt"><span class="tlf">'+esc(d.mottaker)+'</span><button class="knapp-liten" type="button" id="kopier">Kopier</button></div></div></li>'+
         '<li><span class="nr">3</span><div><b>Kom tilbake hit</b><small>'+naar+'</small></div></li>'+
       '</ol>';
@@ -204,12 +216,12 @@
       kb.textContent='Kopiert!'; kb.classList.add('ok'); clearTimeout(kbTimer);
       kbTimer=setTimeout(function(){ kb.textContent='Kopier'; kb.classList.remove('ok'); },2500);
     };
-    // «Åpne Vipps» kopierer også nummeret, i tilfelle det ikke blir fylt ut i Vipps. Går det ikke, sier vi ingenting:
-    // nummeret og «Kopier» står i steg 2.
+    // «Åpne Vipps» og «Åpnet ikke Vipps?» kopierer beløpet: nummeret fylles ut av lenken, men beløpet må de skrive
+    // selv, så da kan de lime det inn i Vipps. Går kopieringen ikke, sier vi ingenting: beløpet står i steg 2.
     [document.getElementById('aapne'), boks.querySelector('.reserve')].forEach(function(a){
       if(a) a.addEventListener('click',function(){
         forlot=true;
-        if(kb && !kb.classList.contains('ok')) vjVipps.kopier(nr).then(visKopiert).catch(function(){});
+        vjVipps.kopier(String(Math.round(Number(d.belop)||0))).catch(function(){});
       });
     });
     visModus();
