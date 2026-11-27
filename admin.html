@@ -83,6 +83,10 @@ tbody tr:hover{background:#fbf7ee}
 .felt-rad .hake{display:flex;align-items:center;gap:8px;font-weight:400;align-self:end;min-height:44px}
 .felt-rad .hake input{width:18px;height:18px;min-height:0;margin:0;accent-color:var(--green)}
 .chip{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;margin-left:6px;vertical-align:1px;background:#eef3ee;color:var(--green)}
+.skjulte-navn{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 12px}
+.skjulte-navn .hint{margin:0}
+.skjulte-navn .chip{border:0;cursor:pointer;font-family:inherit;text-transform:none;letter-spacing:0;margin:0}
+.skjulte-navn input{font:inherit;font-size:14px;padding:5px 8px;border:1px solid #ddd;border-radius:6px;flex:0 1 180px;min-width:0}
 .chip.advarsel{background:#fbeaea;color:var(--red-dark)}
 td .btn{margin-top:0;font-size:14px;min-height:36px;padding:6px 12px}
 td select{max-width:220px;font-size:14px;padding:6px 8px}
@@ -133,8 +137,26 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
       <div class="tabell"><table id="ventende" class="venstre"></table></div>
       <h3>Innbetalinger som ikke ble koblet</h3>
       <p class="hint">Velg ordren betalingen hører til og trykk «Koble». Gjelder den ikke heftet, trykker du «Ignorer». Har en kunde betalt feil beløp, er ordren vi tror den hører til, valgt på forhånd. «Koble» sender heftet uansett beløp.</p>
+      <form class="skjulte-navn" id="skjulForm">
+        <span class="hint">Navn som er skjult i listen, uansett beløp. De kobles som vanlig:</span>
+        <span id="skjulteNavn"></span>
+        <input type="text" id="nyttSkjult" aria-label="Navn som skal skjules" placeholder="Fornavn Etternavn">
+        <button class="lenke" type="submit">Skjul</button>
+      </form>
       <div class="tabell"><table id="umatchede" class="venstre"></table></div>
       <p class="testsvar" id="venteSvar" hidden></p>
+    </div>
+
+    <div class="panel">
+      <h2>Legg til kjøper</h2>
+      <p class="hint">For deg som selger heftet utenom nettsiden. Med «Har betalt» får kunden heftet på e-post med en gang. Uten får kunden betalingsinfo og vippser til nummeret for Vipps privat, og banken kobler betalingen som vanlig.</p>
+      <div class="felt-rad">
+        <label>Navn<input id="kNavn" autocomplete="off" placeholder="Fornavn Etternavn"></label>
+        <label>E-post<input id="kEpost" type="email" autocomplete="off"></label>
+        <label class="hake"><input type="checkbox" id="kBetalt">Har betalt</label>
+      </div>
+      <div class="lag"><button class="btn" type="button" id="leggTil">Legg til</button></div>
+      <p class="testsvar" id="leggTilSvar" hidden></p>
     </div>
 
     <div class="panel">
@@ -325,8 +347,11 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
         return '<tr><td>'+esc(b.dato)+'</td><td>'+esc(b.belop)+' kr</td><td style="white-space:normal;min-width:180px">'+esc(b.tekst||b.navn)+'</td>'+
           '<td>'+statusTekst+'</td>'+
           '<td><select data-velg="'+esc(b.bankId)+'"><option value="">Velg ordre</option>'+valg.map(function(o){ return '<option value="'+esc(o.ordre)+'"'+(o.ordre===forslag?' selected':'')+'>'+esc(o.ordre+' · '+(o.vippsNavn||o.navn)+(feilBelop?' · '+o.belop+' kr':''))+'</option>'; }).join('')+'</select></td>'+
-          '<td><button class="btn" type="button" data-koble="'+esc(b.bankId)+'">Koble</button> <button class="lenke" type="button" data-ignorer="'+esc(b.bankId)+'">Ignorer</button></td></tr>';
+          '<td><button class="btn" type="button" data-koble="'+esc(b.bankId)+'">Koble</button> <button class="lenke" type="button" data-ignorer="'+esc(b.bankId)+'">Ignorer</button>'+
+          (String(b.navn||'').trim().split(/\s+/).length>1?' <button class="lenke" type="button" title="Skjul alle innbetalinger fra dette navnet i listen. De kobles som vanlig." data-skjul="'+esc(b.navn)+'">Skjul navnet</button>':'')+'</td></tr>';
       }).join(''):'<tr><td colspan="6" class="tom">Ingen innbetalinger venter på kobling.</td></tr>')+'</tbody>';
+    var sk=inn.skjulteNavn||[];
+    $('skjulteNavn').innerHTML=sk.length?sk.map(function(n){ return '<button class="chip" type="button" title="Vis i listen igjen" data-visnavn="'+esc(n)+'">'+esc(n)+' ✕</button>'; }).join(' '):'<span class="hint">ingen ennå.</span>';
     if(!innstillingerRort) fyllInnstillinger(inn);
     if(!$('tEpost').value && inn.varselEpost) $('tEpost').value=inn.varselEpost; // din egen adresse som forslag
     visTestlenke(inn.testlenke);
@@ -360,6 +385,7 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
     else if(b.klar) linjer.push('✅ Koblet til'+(b.konto?' · konto '+b.konto:'')+(b.sistSjekket?' · sist sjekket '+tid(b.sistSjekket):'')+'.');
     else if(b.tilkoblet) linjer.push('Koblet til, men ingen konto er valgt. Trykk «Velg konto».');
     else linjer.push('Ikke koblet til. Lim inn klient-ID og hemmelighet fra developer.sparebank1.no og trykk «Koble til banken».');
+    if(b.pause) linjer.push('⏸️ Pause: banken sa at vi spurte for ofte. Den spørres igjen om noen minutter.');
     if(b.utloper) linjer.push('BankID-godkjenningen varer til '+new Date(b.utloper).toLocaleDateString('nb-NO',{dateStyle:'long'})+'.');
     $('bankStatus').textContent=linjer.join(' ');
     $('bKlient').placeholder=b.klientId?'Lagret (lim inn for å bytte)':'';
@@ -561,11 +587,26 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
       if(!sel||!sel.value){ svarBoks('venteSvar','Velg ordren betalingen hører til først.',true); return; }
       b.disabled=true;
       adminKall({action:'koble',ordre:sel.value,bankId:b.dataset.koble},'venteSvar').then(function(d){ svarBoks('venteSvar','Betalingen er koblet til '+d.ordre+', og kunden har fått heftet.'); hent(); }).catch(function(){ b.disabled=false; });
+    } else if(b.dataset.skjul||b.dataset.visnavn){
+      b.disabled=true;
+      adminKall(b.dataset.skjul?{action:'innstillinger',skjulNavn:b.dataset.skjul}:{action:'innstillinger',visNavn:b.dataset.visnavn},'venteSvar').then(function(){ svarBoks('venteSvar',''); hent(); }).catch(function(){ b.disabled=false; });
     } else if(b.dataset.ignorer){
       b.disabled=true;
       adminKall({action:'ignorer',bankId:b.dataset.ignorer},'venteSvar').then(function(){ svarBoks('venteSvar','Innbetalingen er skjult.'); hent(); }).catch(function(){ b.disabled=false; });
     }
   });
+  $('leggTil').onclick=function(){
+    var b=$('leggTil'), betalt=$('kBetalt').checked;
+    b.disabled=true; b.textContent='Legger til …';
+    adminKall({action:'leggtil',navn:$('kNavn').value,epost:$('kEpost').value,betalt:betalt},'leggTilSvar').then(function(d){
+      svarBoks('leggTilSvar',d.ordre+' er lagt til. '+(betalt?'Kunden har fått heftet på e-post.':'Kunden får betalingsinfo på e-post, og ordren venter på betalingen.'));
+      $('kNavn').value=''; $('kEpost').value=''; $('kBetalt').checked=false; hent();
+    }).catch(function(){}).then(function(){ b.disabled=false; b.textContent='Legg til'; });
+  };
+  $('skjulForm').onsubmit=function(e){
+    e.preventDefault(); var n=$('nyttSkjult').value.trim(); if(!n) return;
+    adminKall({action:'innstillinger',skjulNavn:n},'venteSvar').then(function(){ $('nyttSkjult').value=''; svarBoks('venteSvar',''); hent(); }).catch(function(){});
+  };
   // Kommer du tilbake fra BankID-fanen, hentes ny status
   var sistFokus=0;
   window.addEventListener('focus',function(){ if(okt && Date.now()-sistFokus>5000){ sistFokus=Date.now(); hent(); } });
