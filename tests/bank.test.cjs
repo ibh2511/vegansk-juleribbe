@@ -5,7 +5,7 @@ const ctx={console,Date,JSON,Math,Object,String,Number,Array,RegExp,Error,
     computeDigest:(a,s)=>[...crypto.createHash('md5').update(s,'utf8').digest()].map(b=>b>127?b-256:b),
     formatDate:(d)=>d.toISOString().slice(0,10)},
   Session:{getScriptTimeZone:()=>'Europe/Oslo'},
-  LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock(){}})},
+  LockService:{getScriptLock:()=>({tryLock:()=>true,waitLock(){},releaseLock(){}})},
   PropertiesService:{getScriptProperties:()=>({setProperty(){},getProperty(){return null}})},
   CacheService:{getScriptCache:()=>({get(){return null},put(){}})}};
 vm.createContext(ctx);
@@ -39,3 +39,11 @@ raa=[tx('d1','Ola Ukjent','BOOKED')]; ctx.sjekkBank_(); assert.equal(bank.length
 bank.splice(1); raa=[tx('e1','Per Hansen','BOOKED'),tx('e2','Per Hansen','BOOKED')]; ctx.sjekkBank_();
 assert.equal(bank.length,3); assert.notEqual(bank[1][1],bank[2][1]);
 console.log('alle banktester OK');
+
+// «Legg til kjøper»: med «Har betalt» blir ordren betalt, uten mobilnummer for privat gis en feilmelding
+Object.assign(ctx,{sjekkOkt_:()=>{}, nextOrderNo_:()=>'VJ-2000', prisOre_:()=>9900, nyNokkel_:()=>'n', privatNr_:()=>''});
+let r=ctx.adminLeggTil_({navn:'Per Hansen',epost:'per@x.no',betalt:true});
+assert.equal(r.ok,true); assert.equal(ordre[ordre.length-1][O('ordre')],'VJ-2000'); assert.equal(ordre[ordre.length-1][O('status')],'BETALT');
+r=ctx.adminLeggTil_({navn:'Per Hansen',epost:'per@x.no',betalt:false}); assert.equal(r.ok,false);
+r=ctx.adminLeggTil_({navn:'Per',epost:'per@x.no',betalt:true}); assert.equal(r.ok,false);
+console.log('legg til kjøper OK');

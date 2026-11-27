@@ -148,6 +148,18 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
     </div>
 
     <div class="panel">
+      <h2>Legg til kjøper</h2>
+      <p class="hint">For deg som selger heftet utenom nettsiden. Med «Har betalt» får kunden heftet på e-post med en gang. Uten får kunden betalingsinfo og vippser til nummeret for Vipps privat, og banken kobler betalingen som vanlig.</p>
+      <div class="felt-rad">
+        <label>Navn<input id="kNavn" autocomplete="off" placeholder="Fornavn Etternavn"></label>
+        <label>E-post<input id="kEpost" type="email" autocomplete="off"></label>
+        <label class="hake"><input type="checkbox" id="kBetalt">Har betalt</label>
+      </div>
+      <div class="lag"><button class="btn" type="button" id="leggTil">Legg til</button></div>
+      <p class="testsvar" id="leggTilSvar" hidden></p>
+    </div>
+
+    <div class="panel">
       <h2>Kilder og samarbeid</h2>
       <p class="hint">Trykk på en kolonne for å sortere. Klikk er trykk på Vipps-knappene.</p>
       <div class="tabell"><table id="kilder"></table></div>
@@ -583,6 +595,14 @@ pre.raa{background:#2a1d17;color:#f8f1e3;border-radius:10px;padding:12px;font-si
       adminKall({action:'ignorer',bankId:b.dataset.ignorer},'venteSvar').then(function(){ svarBoks('venteSvar','Innbetalingen er skjult.'); hent(); }).catch(function(){ b.disabled=false; });
     }
   });
+  $('leggTil').onclick=function(){
+    var b=$('leggTil'), betalt=$('kBetalt').checked;
+    b.disabled=true; b.textContent='Legger til …';
+    adminKall({action:'leggtil',navn:$('kNavn').value,epost:$('kEpost').value,betalt:betalt},'leggTilSvar').then(function(d){
+      svarBoks('leggTilSvar',d.ordre+' er lagt til. '+(betalt?'Kunden har fått heftet på e-post.':'Kunden får betalingsinfo på e-post, og ordren venter på betalingen.'));
+      $('kNavn').value=''; $('kEpost').value=''; $('kBetalt').checked=false; hent();
+    }).catch(function(){}).then(function(){ b.disabled=false; b.textContent='Legg til'; });
+  };
   $('skjulForm').onsubmit=function(e){
     e.preventDefault(); var n=$('nyttSkjult').value.trim(); if(!n) return;
     adminKall({action:'innstillinger',skjulNavn:n},'venteSvar').then(function(){ $('nyttSkjult').value=''; svarBoks('venteSvar',''); hent(); }).catch(function(){});

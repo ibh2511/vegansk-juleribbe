@@ -227,6 +227,7 @@ function route_(e, body) {
       case 'testlenke':  return json_(adminTestlenke_(p));
       case 'koble':      return json_(adminKoble_(p));
       case 'ignorer':    return json_(adminIgnorer_(p));
+      case 'leggtil':    return json_(adminLeggTil_(p));
       case 'vippstest':  begrens_('vippstest', 10); return json_(vippsTest_(p));
       case 'vippstestliste': begrens_('vippstestliste', 60); return json_(vippsTestListe_());
       case 'nettlesertest':  begrens_('nettlesertest', 10); return json_(nettleserTest_(p));
@@ -1526,6 +1527,35 @@ function adminTestkjop_(p) {
   var site = cfg_('SITE_URL').replace(/\/$/, '');
   return { ok: true, ordre: row.ordre, epostSendt: sendt, epost: row.epost,
     takkUrl: site + '/takk.html?ordre=' + encodeURIComponent(row.ordre) + '&k=' + row.nokkel };
+}
+
+/**
+ * «Legg til kjøper» i admin. Uten «Har betalt» blir det en vanlig Vipps privat-ordre (betalingsinfo, banken kobler).
+ * Med «Har betalt» blir ordren betalt med en gang, og kunden får heftet på e-post.
+ */
+function adminLeggTil_(p) {
+  try { sjekkOkt_(p.okt); } catch (e) { return { ok: false, error: e.message, utlogget: true }; }
+  var betalt = p.betalt === true || p.betalt === 'true';
+  if (!betalt) {
+    if (privatNr_().length !== 8) return { ok: false, error: 'Legg inn mobilnummeret for Vipps privat først, eller kryss av for «Har betalt».' };
+    return createPrivat_({ navn: p.navn, epost: p.epost, cta: 'admin' });
+  }
+  var navn = String(p.navn || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  var epost = String(p.epost || '').trim().toLowerCase().slice(0, 120);
+  if (navnOrd_(navn).length < 2) return { ok: false, error: 'Skriv fullt navn.' };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(epost)) return { ok: false, error: 'Skriv en gyldig e-postadresse.' };
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  var row;
+  try {
+    row = {}; ORDRE_KOLONNER.forEach(function (k) { row[k] = ''; });
+    row.ordre = nextOrderNo_(); row.opprettet = new Date(); row.nedlastinger = 0; row.kilde = 'admin'; row.cta = 'annet';
+    row.nokkel = nyNokkel_(); row.belop = prisOre_(row.opprettet) / 100;
+    row.navn = navn; row.epost = epost; row.vipps_navn = navn; row.betaling = 'privat'; row.status = 'VENTER_BANK';
+    sheet_(ORDRE_ARK).appendRow(ORDRE_KOLONNER.map(function (k) { return celle_(row[k]); }));
+    markerPrivatBetalt_(findOrder_('ordre', row.ordre)); // betalt, token og e-post med heftet, som «Marker som betalt»
+  } finally { lock.releaseLock(); }
+  return { ok: true, ordre: row.ordre };
 }
 
 /**
